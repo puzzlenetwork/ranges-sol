@@ -302,6 +302,52 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@balancer-labs/v2-pool-range@workspace:pkg/pool-range":
+  version: 0.0.0-use.local
+  resolution: "@balancer-labs/v2-pool-range@workspace:pkg/pool-range"
+  dependencies:
+    "@balancer-labs/balancer-js": "workspace:*"
+    "@balancer-labs/solidity-toolbox": "workspace:*"
+    "@balancer-labs/v2-common": "workspace:*"
+    "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-interfaces": "workspace:*"
+    "@balancer-labs/v2-pool-utils": "workspace:*"
+    "@balancer-labs/v2-pool-weighted": "workspace:*"
+    "@balancer-labs/v2-solidity-utils": "workspace:*"
+    "@nomiclabs/hardhat-ethers": "npm:^2.2.1"
+    "@nomiclabs/hardhat-waffle": "npm:^2.0.3"
+    "@types/chai": "npm:^4.3.3"
+    "@types/lodash": "npm:^4.14.186"
+    "@types/mocha": "npm:^10.0.0"
+    "@types/node": "npm:^14.14.31"
+    "@typescript-eslint/eslint-plugin": "npm:^5.41.0"
+    "@typescript-eslint/parser": "npm:^5.41.0"
+    chai: "npm:^4.3.6"
+    decimal.js: "npm:^10.4.2"
+    eslint: "npm:^8.26.0"
+    eslint-plugin-mocha-no-only: "npm:^1.1.1"
+    eslint-plugin-prettier: "npm:^4.2.1"
+    ethereum-waffle: "npm:^3.4.4"
+    ethers: "npm:^5.7.2"
+    hardhat: "npm:^2.12.5"
+    hardhat-contract-sizer: "npm:^2.10.0"
+    hardhat-ignore-warnings: "npm:^0.2.4"
+    lodash.frompairs: "npm:^4.0.1"
+    lodash.pick: "npm:^4.4.0"
+    lodash.range: "npm:^3.2.0"
+    lodash.times: "npm:^4.3.2"
+    lodash.zip: "npm:^4.2.0"
+    mocha: "npm:^10.1.0"
+    nodemon: "npm:^2.0.20"
+    prettier: "npm:^2.7.1"
+    prettier-plugin-solidity: "npm:v1.0.0-alpha.59"
+    solhint: "npm:^3.2.0"
+    solhint-plugin-prettier: "npm:^0.0.4"
+    ts-node: "npm:^10.9.1"
+    typescript: "npm:^4.0.2"
+  languageName: unknown
+  linkType: soft
+
 "@balancer-labs/v2-pool-stable@workspace:*, @balancer-labs/v2-pool-stable@workspace:pkg/pool-stable":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-pool-stable@workspace:pkg/pool-stable"
@@ -598,6 +644,13 @@ __metadata:
     "@chainsafe/persistent-merkle-tree": "npm:^0.4.2"
     case: "npm:^1.6.3"
   checksum: 4b839080524432fe8671061ede8629c168804bb7634c2e4c58c54a072b0ddeff9fb93e9a13c8da1540f764521fa8fe19f4c490437f2d049c3cef8eb874170dbc
+  languageName: node
+  linkType: hard
+
+"@colors/colors@npm:1.5.0":
+  version: 1.5.0
+  resolution: "@colors/colors@npm:1.5.0"
+  checksum: 5e08870799494f68e5b3b79e9a337bbf5fd7e634904fbbe642769921bf158fe458c41c888f88edf051b78c5325e3339970f00b24e31421c3480bb58f02687218
   languageName: node
   linkType: hard
 
@@ -4153,6 +4206,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"cli-table3@npm:^0.6.0":
+  version: 0.6.5
+  resolution: "cli-table3@npm:0.6.5"
+  dependencies:
+    "@colors/colors": "npm:1.5.0"
+    string-width: "npm:^4.2.0"
+  dependenciesMeta:
+    "@colors/colors":
+      optional: true
+  checksum: 7004ba985cd532797da5cd286670a717ecc88ce6b6e3f7a3f5ad23cfbc42305e8b0a6f3e91ae5aa520cc762c0f5f1bac2912c900c431ae33e801a8ed8aa68ca0
+  languageName: node
+  linkType: hard
+
 "cliui@npm:^3.2.0":
   version: 3.2.0
   resolution: "cliui@npm:3.2.0"
@@ -6776,6 +6842,19 @@ __metadata:
     ajv: "npm:^6.12.3"
     har-schema: "npm:^2.0.0"
   checksum: 3eb98922f5a5c67bf4973721275b1707b915e2d3dd88131cc0040b2f7dcdb512556cf1a692c90d1c2e0648b873735199bb27884612f7cb7457b4eb1f4cec6db4
+  languageName: node
+  linkType: hard
+
+"hardhat-contract-sizer@npm:^2.10.0":
+  version: 2.10.1
+  resolution: "hardhat-contract-sizer@npm:2.10.1"
+  dependencies:
+    chalk: "npm:^4.0.0"
+    cli-table3: "npm:^0.6.0"
+    strip-ansi: "npm:^6.0.0"
+  peerDependencies:
+    hardhat: ^2.0.0
+  checksum: 2dc683d81aa2292fec137c31c679a9d6ead7e881194fab41de2e0715e40618964917ef0d67e5ed9d881e5ee64d88d9f4cd4a52dc6416412462ded961c492b6b4
   languageName: node
   linkType: hard
 
