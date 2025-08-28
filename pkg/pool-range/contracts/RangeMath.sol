@@ -59,14 +59,6 @@ library RangeMath {
         return bptTotalSupply.mulUp(ratioMin).divDown(FixedPoint.ONE);
     }
 
-    function _calcTokenInGivenExactBptOut(
-        uint256 factBalance,
-        uint256 bptAmountOut,
-        uint256 bptTotalSupply
-    ) internal pure returns (uint256) {
-        return bptTotalSupply.mulUp(bptAmountOut).divDown(factBalance);
-    }
-
     function _calcBptInGivenExactTokensOut(
         uint256[] memory factBalances,
         uint256[] memory amountsOut,

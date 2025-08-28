@@ -88,6 +88,31 @@ abstract contract BaseRangePool is BaseGeneralPool {
     function _getNormalizedWeights() internal view virtual returns (uint256[] memory);
 
     /**
+     * @dev Returns the virtual balance of `token`.
+     */
+    function _getVirtualBalance(IERC20 token) internal view virtual returns (uint256);
+
+    /**
+     * @dev Increases the virtual balance of `token`.
+     */
+    function _increaseVirtualBalance(IERC20 token, uint256 delta) internal virtual;
+
+    /**
+     * @dev Decreases the virtual balance of `token`.
+     */
+    function _decreaseVirtualBalance(IERC20 token, uint256 delta) internal virtual;
+
+    /**
+     * @dev Increases the virtual balances of `join`.
+     */
+    function _increaseVirtualBalances(uint256[] memory deltas) internal virtual;
+
+    /**
+     * @dev Decreases the virtual balances of `exit`.
+     */
+    function _decreaseVirtualBalances(uint256[] memory deltas) internal virtual;
+
+    /**
      * @dev Returns the current value of the invariant.
      * **IMPORTANT NOTE**: calling this function within a Vault context (i.e. in the middle of a join or an exit) is
      * potentially unsafe, since the returned value is manipulable. It is up to the caller to ensure safety.
@@ -122,40 +147,47 @@ abstract contract BaseRangePool is BaseGeneralPool {
 
     function _onSwapGivenIn(
         SwapRequest memory swapRequest,
-        uint256[] memory factBalances,
-        uint256 virtualBalanceIn,
-        uint256 virtualBalanceOut
+        uint256[] memory balances,
+        uint256 /*indexIn*/,
+        uint256 /*indexOut*/
     ) internal virtual override returns (uint256) {
         uint256 tokenOutIdx = _getTokenIndex(swapRequest.tokenOut);
-        _require(tokenOutIdx < factBalances.length, Errors.OUT_OF_BOUNDS);
-        return
-            RangeMath._calcOutGivenIn(
-                virtualBalanceIn,
+        _require(tokenOutIdx < balances.length, Errors.OUT_OF_BOUNDS);
+        uint256 amountOut = RangeMath._calcOutGivenIn(
+                _getVirtualBalance(swapRequest.tokenIn),
                 _getNormalizedWeight(swapRequest.tokenIn),
-                virtualBalanceOut,
+                _getVirtualBalance(swapRequest.tokenOut),
                 _getNormalizedWeight(swapRequest.tokenOut),
                 swapRequest.amount,
-                factBalances[tokenOutIdx]
+                balances[tokenOutIdx]
             );
+
+        _increaseVirtualBalance(swapRequest.tokenIn, swapRequest.amount);
+        _decreaseVirtualBalance(swapRequest.tokenOut, amountOut);
+        return amountOut;
     }
 
     function _onSwapGivenOut(
         SwapRequest memory swapRequest,
-        uint256[] memory factBalances,
-        uint256 virtualBalanceIn,
-        uint256 virtualBalanceOut
+        uint256[] memory balances,
+        uint256 /*indexIn*/,
+        uint256 /*indexOut*/
     ) internal virtual override returns (uint256) {
         uint256 tokenOutIdx = _getTokenIndex(swapRequest.tokenOut);
-        _require(tokenOutIdx < factBalances.length, Errors.OUT_OF_BOUNDS);
-        _require(factBalances[tokenOutIdx] >= swapRequest.amount, Errors.INSUFFICIENT_BALANCE);
-        return
+        _require(tokenOutIdx < balances.length, Errors.OUT_OF_BOUNDS);
+        _require(balances[tokenOutIdx] >= swapRequest.amount, Errors.INSUFFICIENT_BALANCE);
+        uint256 amountIn =
             WeightedMath._calcInGivenOut(
-                virtualBalanceIn,
+                _getVirtualBalance(swapRequest.tokenIn),
                 _getNormalizedWeight(swapRequest.tokenIn),
-                virtualBalanceOut,
+                _getVirtualBalance(swapRequest.tokenOut),
                 _getNormalizedWeight(swapRequest.tokenOut),
                 swapRequest.amount
             );
+
+        _increaseVirtualBalance(swapRequest.tokenIn, amountIn);
+        _decreaseVirtualBalance(swapRequest.tokenOut, swapRequest.amount);
+        return amountIn;
     }
 
     /**
@@ -249,6 +281,8 @@ abstract contract BaseRangePool is BaseGeneralPool {
             userData
         );
 
+        _increaseVirtualBalances(amountsIn);
+
         _afterJoinExit(
             preJoinExitInvariant,
             balances,
@@ -278,8 +312,6 @@ abstract contract BaseRangePool is BaseGeneralPool {
 
         if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _joinExactTokensInForBPTOut(balances, scalingFactors, totalSupply, userData);
-        } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return _joinTokenInForExactBPTOut(balances, totalSupply, userData);
         } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
             return _joinAllTokensInForExactBPTOut(balances, totalSupply, userData);
         } else {
@@ -305,30 +337,6 @@ abstract contract BaseRangePool is BaseGeneralPool {
         );
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
-
-        return (bptAmountOut, amountsIn);
-    }
-
-    function _joinTokenInForExactBPTOut(
-        uint256[] memory balances,
-        uint256 totalSupply,
-        bytes memory userData
-    ) private pure returns (uint256, uint256[] memory) {
-        (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
-        // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
-
-        _require(tokenIndex < balances.length, Errors.OUT_OF_BOUNDS);
-
-        uint256 amountIn = RangeMath._calcTokenInGivenExactBptOut(
-            balances[tokenIndex],
-            bptAmountOut,
-            totalSupply
-        );
-
-        // We join in a single token, so we initialize amountsIn with zeros
-        uint256[] memory amountsIn = new uint256[](balances.length);
-        // And then assign the result to the selected token
-        amountsIn[tokenIndex] = amountIn;
 
         return (bptAmountOut, amountsIn);
     }
@@ -371,6 +379,8 @@ abstract contract BaseRangePool is BaseGeneralPool {
             userData
         );
 
+        _decreaseVirtualBalances(amountsOut);
+
         _afterJoinExit(
             preJoinExitInvariant,
             balances,
@@ -391,50 +401,20 @@ abstract contract BaseRangePool is BaseGeneralPool {
     function _doExit(
         address,
         uint256[] memory balances,
-        uint256[] memory normalizedWeights,
+        uint256[] memory /*normalizedWeights*/,
         uint256[] memory scalingFactors,
         uint256 totalSupply,
         bytes memory userData
     ) internal view virtual returns (uint256, uint256[] memory) {
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
-        if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _exitExactBPTInForTokenOut(balances, normalizedWeights, totalSupply, userData);
-        } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+        if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(balances, totalSupply, userData);
         } else if (kind == WeightedPoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(balances, scalingFactors, totalSupply, userData);
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
-    }
-
-    function _exitExactBPTInForTokenOut(
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256 totalSupply,
-        bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
-        (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
-        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
-
-        _require(tokenIndex < balances.length, Errors.OUT_OF_BOUNDS);
-
-        uint256 amountOut = WeightedMath._calcTokenOutGivenExactBptIn(
-            balances[tokenIndex],
-            normalizedWeights[tokenIndex],
-            bptAmountIn,
-            totalSupply,
-            getSwapFeePercentage()
-        );
-
-        // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
-        // We exit in a single token, so we initialize amountsOut with zeros
-        uint256[] memory amountsOut = new uint256[](balances.length);
-        // And then assign the result to the selected token
-        amountsOut[tokenIndex] = amountOut;
-
-        return (bptAmountIn, amountsOut);
     }
 
     function _exitExactBPTInForTokensOut(
