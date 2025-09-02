@@ -34,6 +34,8 @@ abstract contract RangePoolProtocolFees is BaseRangePool, ProtocolFeeCache, IRat
     IRateProvider internal immutable _rateProvider5;
     IRateProvider internal immutable _rateProvider6;
     IRateProvider internal immutable _rateProvider7;
+    IRateProvider internal immutable _rateProvider8;
+    IRateProvider internal immutable _rateProvider9;
 
     bool internal immutable _exemptFromYieldFees;
 
@@ -56,7 +58,7 @@ abstract contract RangePoolProtocolFees is BaseRangePool, ProtocolFeeCache, IRat
     event ATHRateProductUpdated(uint256 oldATHRateProduct, uint256 newATHRateProduct);
 
     constructor(uint256 numTokens, IRateProvider[] memory rateProviders) {
-        _require(numTokens <= 8, Errors.MAX_TOKENS);
+        _require(numTokens <= 10, Errors.MAX_TOKENS);
         InputHelpers.ensureInputLengthMatch(numTokens, rateProviders.length);
 
         _exemptFromYieldFees = _getYieldFeeExemption(rateProviders);
@@ -69,6 +71,8 @@ abstract contract RangePoolProtocolFees is BaseRangePool, ProtocolFeeCache, IRat
         _rateProvider5 = numTokens > 5 ? rateProviders[5] : IRateProvider(0);
         _rateProvider6 = numTokens > 6 ? rateProviders[6] : IRateProvider(0);
         _rateProvider7 = numTokens > 7 ? rateProviders[7] : IRateProvider(0);
+        _rateProvider8 = numTokens > 8 ? rateProviders[8] : IRateProvider(0);
+        _rateProvider9 = numTokens > 9 ? rateProviders[9] : IRateProvider(0);
     }
 
     function _getYieldFeeExemption(IRateProvider[] memory rateProviders) internal pure returns (bool) {
@@ -119,6 +123,8 @@ abstract contract RangePoolProtocolFees is BaseRangePool, ProtocolFeeCache, IRat
             if (totalTokens > 5) { providers[5] = _rateProvider5; } else { return providers; }
             if (totalTokens > 6) { providers[6] = _rateProvider6; } else { return providers; }
             if (totalTokens > 7) { providers[7] = _rateProvider7; } else { return providers; }
+            if (totalTokens > 8) { providers[8] = _rateProvider8; } else { return providers; }
+            if (totalTokens > 9) { providers[9] = _rateProvider9; } else { return providers; }
         }
 
         return providers;
@@ -343,6 +349,18 @@ abstract contract RangePoolProtocolFees is BaseRangePool, ProtocolFeeCache, IRat
         }
         if (totalTokens > 7) {
             rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[7], _rateProvider7));
+        } else {
+            return rateProduct;
+        }
+        if (totalTokens > 8) {
+            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[8], _rateProvider8));
+        } else {
+            return rateProduct;
+        }
+        if (totalTokens > 9) {
+            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[9], _rateProvider9));
+        } else {
+            return rateProduct;
         }
 
         return rateProduct;
