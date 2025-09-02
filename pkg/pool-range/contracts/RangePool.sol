@@ -221,6 +221,10 @@ contract RangePool is BaseRangePool, RangePoolProtocolFees {
         return _totalTokens;
     }
 
+    function _getVirtualBalances() internal view virtual override returns (uint256[] memory) {
+        return _virtualBalances;
+    }
+
     function _getVirtualBalance(IERC20 token) internal view virtual override returns (uint256) {
         return _virtualBalances[_getTokenIndex(token)];
     }

@@ -90,6 +90,11 @@ abstract contract BaseRangePool is BaseGeneralPool {
     /**
      * @dev Returns the virtual balance of `token`.
      */
+    function _getVirtualBalances() internal view virtual returns (uint256[] memory);
+
+    /**
+     * @dev Returns the virtual balance of `token`.
+     */
     function _getVirtualBalance(IERC20 token) internal view virtual returns (uint256);
 
     /**
@@ -139,6 +144,10 @@ abstract contract BaseRangePool is BaseGeneralPool {
 
     function getNormalizedWeights() external view returns (uint256[] memory) {
         return _getNormalizedWeights();
+    }
+
+    function getVirtualBalances() external view returns (uint256[] memory) {
+        return _getVirtualBalances();
     }
 
     // Base Pool handlers

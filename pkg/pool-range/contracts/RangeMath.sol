@@ -53,7 +53,8 @@ library RangeMath {
         uint256 ratioMin = amountsIn[0].mulUp(FixedPoint.ONE).divDown(factBalances[0]);
         uint256 i = 1;
         while (i < factBalances.length && ratioMin > 0) {
-            ratioMin = Math.min(ratioMin, amountsIn[0].mulUp(FixedPoint.ONE).divDown(factBalances[0]));
+            ratioMin = Math.min(ratioMin, amountsIn[i].mulUp(FixedPoint.ONE).divDown(factBalances[i]));
+            i++;
         }
 
         return bptTotalSupply.mulUp(ratioMin).divDown(FixedPoint.ONE);
@@ -67,7 +68,8 @@ library RangeMath {
         uint256 ratioMin = amountsOut[0].mulUp(FixedPoint.ONE).divDown(factBalances[0]);
         uint256 i = 1;
         while (i < factBalances.length && ratioMin > 0) {
-            ratioMin = Math.min(ratioMin, amountsOut[0].mulUp(FixedPoint.ONE).divDown(factBalances[0]));
+            ratioMin = Math.min(ratioMin, amountsOut[i].mulUp(FixedPoint.ONE).divDown(factBalances[i]));
+            i++;
         }
 
         return bptTotalSupply.mulUp(ratioMin).divDown(FixedPoint.ONE);
