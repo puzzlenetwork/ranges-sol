@@ -106,30 +106,32 @@ export default class BaseRangePool extends BasePool {
     );
   }
 
-  async estimateGivenIn(params: SwapRangePool, currentBalances?: BigNumberish[]): Promise<BigNumberish> {
-    if (!currentBalances) currentBalances = await this.getVirtualBalances();
+  async estimateGivenIn(params: SwapRangePool, virtualBalances?: BigNumberish[]): Promise<BigNumberish> {
+    const balances = await this.getBalances();
+    if (!virtualBalances) virtualBalances = await this.getVirtualBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOfTwoTokens(params.in, params.out);
 
-    return bn(
+    const amountOut = bn(
       calcOutGivenIn(
-        currentBalances[tokenIn],
+        virtualBalances[tokenIn],
         this.weights[tokenIn],
-        currentBalances[tokenOut],
+        virtualBalances[tokenOut],
         this.weights[tokenOut],
         params.amount
       )
     );
+    return amountOut.lt(balances[tokenOut]) ? amountOut : balances[tokenOut];
   }
 
-  async estimateGivenOut(params: SwapRangePool, currentBalances?: BigNumberish[]): Promise<BigNumberish> {
-    if (!currentBalances) currentBalances = await this.getBalances();
+  async estimateGivenOut(params: SwapRangePool, virtualBalances?: BigNumberish[]): Promise<BigNumberish> {
+    if (!virtualBalances) virtualBalances = await this.getVirtualBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOfTwoTokens(params.in, params.out);
 
     return bn(
       calcInGivenOut(
-        currentBalances[tokenIn],
+        virtualBalances[tokenIn],
         this.weights[tokenIn],
-        currentBalances[tokenOut],
+        virtualBalances[tokenOut],
         this.weights[tokenOut],
         params.amount
       )
@@ -149,7 +151,7 @@ export default class BaseRangePool extends BasePool {
     let i = 1;
     while (i < balances.length && ratioMin.gt(0)) {
       const tmp = amountsIn[i].div(balances[i]);
-      if (tmp < ratioMin) ratioMin = tmp;
+      ratioMin = tmp.lt(ratioMin) ? tmp : ratioMin;
       i++;
     }
     return fp(bptTotalSupply.mul(ratioMin));

@@ -32,6 +32,16 @@ contract ExternalRangeMath {
         return RangeMath._calcOutGivenIn(balanceIn, weightIn, balanceOut, weightOut, amountIn, factBalance);
     }
 
+    function calcInGivenOut(
+        uint256 balanceIn,
+        uint256 weightIn,
+        uint256 balanceOut,
+        uint256 weightOut,
+        uint256 amountOut
+    ) external pure returns (uint256) {
+        return RangeMath._calcInGivenOut(balanceIn, weightIn, balanceOut, weightOut, amountOut);
+    }
+
     function calcBptOutGivenExactTokensIn(
         uint256[] memory balances,
         uint256[] memory amountsIn,

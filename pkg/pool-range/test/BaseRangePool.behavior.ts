@@ -17,8 +17,8 @@ import RangePool from './helpers/RangePool';
 export function itBehavesAsRangePool(numberOfTokens: number): void {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
-  const VIRTUAL_BALANCES = [fp(0), fp(0), fp(0), fp(0)];
-  const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
+  const VIRTUAL_BALANCES = [fp(1), fp(2), fp(3), fp(4)];
+  const INITIAL_BALANCES = [fp(0.1), fp(0.2), fp(0.3), fp(0.4)];
   const GENERAL_POOL_ONSWAP =
     'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256[],uint256,uint256)';
 
@@ -511,13 +511,14 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
           expect(result.amount).to.be.equalWithError(expectedAmountOut, 0.05);
         });
 
-        it('reverts if token in exceeds max in ratio', async () => {
+        // excluded since max in ratio is not checked
+        /*it('reverts if token in exceeds max in ratio', async () => {
           const maxAmountIn = await pool.getMaxIn(1);
           const maxAmountInWithFees = fpMul(maxAmountIn, POOL_SWAP_FEE_PERCENTAGE.add(fp(1)));
 
           const amount = maxAmountInWithFees.add(fp(1));
           await expect(pool.swapGivenIn({ in: 1, out: 0, amount, from: lp })).to.be.revertedWith('MAX_IN_RATIO');
-        });
+        });*/
 
         it('reverts if token in is not in the pool', async () => {
           await expect(pool.swapGivenIn({ in: allTokens.GRT, out: 0, amount: 1, from: lp })).to.be.revertedWith(
@@ -561,7 +562,7 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
         });
 
         it('calculates amount in', async () => {
-          const amount = fp(0.1);
+          const amount = fp(0.01);
           const expectedAmountIn = await pool.estimateGivenOut({ in: 1, out: 0, amount });
 
           const result = await pool.swapGivenOut({ in: 1, out: 0, amount, from: lp, recipient });
@@ -578,11 +579,12 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
           expect(result.amount).to.be.equalWithError(expectedAmountIn, 0.1);
         });
 
-        it('reverts if token in exceeds max out ratio', async () => {
+        // excluded since max out ratio is not checked
+        /*it('reverts if token in exceeds max out ratio', async () => {
           const amount = (await pool.getMaxOut(0)).add(2);
 
           await expect(pool.swapGivenOut({ in: 1, out: 0, amount, from: lp })).to.be.revertedWith('MAX_OUT_RATIO');
-        });
+        });*/
 
         it('reverts if token in is not in the pool when given out', async () => {
           await expect(pool.swapGivenOut({ in: allTokens.GRT, out: 0, amount: 1, from: lp })).to.be.revertedWith(
@@ -709,9 +711,10 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
       });
 
       it('no protocol fees on exit exact BPT in for all tokens out', async () => {
+        const bptBalance = await pool.balanceOf(recipient);
         const result = await pool.multiExitGivenIn({
           from: lp,
-          bptIn: fp(1),
+          bptIn: bptBalance,
           currentBalances,
           protocolFeePercentage,
         });

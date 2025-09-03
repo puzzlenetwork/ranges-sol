@@ -22,6 +22,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/BasePoolMath.sol";
+import "@balancer-labs/v2-pool-weighted/contracts/WeightedMath.sol";
 
 import "./RangeMath.sol";
 
@@ -179,7 +180,7 @@ abstract contract BaseRangePool is BaseGeneralPool {
         _require(tokenOutIdx < balances.length, Errors.OUT_OF_BOUNDS);
         _require(balances[tokenOutIdx] >= swapRequest.amount, Errors.INSUFFICIENT_BALANCE);
         uint256 amountIn =
-            WeightedMath._calcInGivenOut(
+            RangeMath._calcInGivenOut(
                 _getVirtualBalance(swapRequest.tokenIn),
                 _getNormalizedWeight(swapRequest.tokenIn),
                 _getVirtualBalance(swapRequest.tokenOut),

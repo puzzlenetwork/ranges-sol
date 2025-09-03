@@ -14,10 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-import "@balancer-labs/v2-pool-weighted/contracts/WeightedMath.sol";
 
 // These functions start with an underscore, as if they were part of a contract and not a library. At some point this
 // should be fixed.
@@ -27,7 +25,7 @@ library RangeMath {
     using FixedPoint for uint256;
 
     // Computes how many tokens can be taken out of a pool if `amountIn` are sent, given the
-    // current balances and weights.
+    // virtual balances and weights.
     function _calcOutGivenIn(
         uint256 balanceIn,
         uint256 weightIn,
@@ -38,11 +36,61 @@ library RangeMath {
     ) internal pure returns (uint256) {
         /**********************************************************************************************
         // outGivenIn                                                                                //
-        // aO = _calcOutGivenIn(..)                                                                  //
+        // aO = amountOut                                                                            //
+        // bO = balanceOut                                                                           //
+        // bI = balanceIn              /      /            bI             \    (wI / wO) \           //
+        // aI = amountIn    aO = bO * |  1 - | --------------------------  | ^            |          //
+        // wI = weightIn               \      \       ( bI + aI )         /              /           //
+        // wO = weightOut                                                                            //
         // if a0 exceeds factBalance, then a0 = factBalance                                          //                                 //
         **********************************************************************************************/
 
-        return Math.min(factBalance, WeightedMath._calcOutGivenIn(balanceIn, weightIn, balanceOut, weightOut, amountIn));
+        // Amount out, so we round down overall.
+
+        // The multiplication rounds down, and the subtrahend (power) rounds up (so the base rounds up too).
+        // Because bI / (bI + aI) <= 1, the exponent rounds down.
+
+        uint256 denominator = balanceIn.add(amountIn);
+        uint256 base = balanceIn.divUp(denominator);
+        uint256 exponent = weightIn.divDown(weightOut);
+        uint256 power = base.powUp(exponent);
+
+        return Math.min(factBalance, balanceOut.mulDown(power.complement()));
+    }
+
+    // Computes how many tokens must be sent to a pool in order to take `amountOut`, given the
+    // current balances and weights.
+    function _calcInGivenOut(
+        uint256 balanceIn,
+        uint256 weightIn,
+        uint256 balanceOut,
+        uint256 weightOut,
+        uint256 amountOut
+    ) internal pure returns (uint256) {
+        /**********************************************************************************************
+        // inGivenOut                                                                                //
+        // aO = amountOut                                                                            //
+        // bO = balanceOut                                                                           //
+        // bI = balanceIn              /  /            bO             \    (wO / wI)      \          //
+        // aI = amountIn    aI = bI * |  | --------------------------  | ^            - 1  |         //
+        // wI = weightIn               \  \       ( bO - aO )         /                   /          //
+        // wO = weightOut                                                                            //
+        **********************************************************************************************/
+
+        // Amount in, so we round up overall.
+
+        // The multiplication rounds up, and the power rounds up (so the base rounds up too).
+        // Because b0 / (b0 - a0) >= 1, the exponent rounds up.
+
+        uint256 base = balanceOut.divUp(balanceOut.sub(amountOut));
+        uint256 exponent = weightOut.divUp(weightIn);
+        uint256 power = base.powUp(exponent);
+
+        // Because the base is larger than one (and the power rounds up), the power should always be larger than one, so
+        // the following subtraction should never revert.
+        uint256 ratio = power.sub(FixedPoint.ONE);
+
+        return balanceIn.mulUp(ratio);
     }
 
     function _calcBptOutGivenExactTokensIn(

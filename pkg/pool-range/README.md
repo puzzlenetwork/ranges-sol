@@ -14,7 +14,8 @@ Another useful contract is [`RangeMath`](./contracts/RangeMath.sol), which imple
 ### Installation
 
 ```console
-$ git clone https://github.com/puzzlenetwork/ranges-sol
+$ git clone  --recurse-submodules https://github.com/puzzlenetwork/ranges-sol
+
 ```
 
 ### Usage
