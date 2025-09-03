@@ -45,7 +45,6 @@ const MIN_INVARIANT_RATIO = fp(0.7);
 
 export default class BaseRangePool extends BasePool {
   weights: BigNumberish[];
-  vbalances: BigNumberish[];
 
   constructor(
     instance: Contract,
@@ -53,22 +52,16 @@ export default class BaseRangePool extends BasePool {
     vault: Vault,
     tokens: TokenList,
     weights: BigNumberish[],
-    virtualBalances: BigNumberish[],
     swapFeePercentage: BigNumberish,
     owner?: Account
   ) {
     super(instance, poolId, vault, tokens, swapFeePercentage, owner);
 
     this.weights = weights;
-    this.vbalances = virtualBalances;
   }
 
   get normalizedWeights(): BigNumberish[] {
     return this.weights;
-  }
-
-  get virtualBalances(): BigNumberish[] {
-    return this.vbalances;
   }
 
   async getLastPostJoinExitInvariant(): Promise<BigNumber> {
@@ -99,6 +92,10 @@ export default class BaseRangePool extends BasePool {
     return this.instance.getNormalizedWeights();
   }
 
+  async getVirtualBalances(): Promise<BigNumber[]> {
+    return this.instance.getVirtualBalances();
+  }
+
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
     const scalingFactors = await this.getScalingFactors();
@@ -110,7 +107,7 @@ export default class BaseRangePool extends BasePool {
   }
 
   async estimateGivenIn(params: SwapRangePool, currentBalances?: BigNumberish[]): Promise<BigNumberish> {
-    if (!currentBalances) currentBalances = await this.getBalances();
+    if (!currentBalances) currentBalances = await this.getVirtualBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOfTwoTokens(params.in, params.out);
 
     return bn(
@@ -377,8 +374,6 @@ export default class BaseRangePool extends BasePool {
     const { tokens } = await this.vault.getPoolTokens(this.poolId);
     const tokenIn = typeof params.in === 'number' ? tokens[params.in] : params.in.address;
     const tokenOut = typeof params.out === 'number' ? tokens[params.out] : params.out.address;
-    const indexIn = currentBalances[tokens.indexOf(tokenIn)];
-    const indexOut = currentBalances[tokens.indexOf(tokenOut)];
     return {
       kind,
       poolAddress: this.address,
@@ -388,8 +383,8 @@ export default class BaseRangePool extends BasePool {
       tokenIn: tokenIn ?? ZERO_ADDRESS,
       tokenOut: tokenOut ?? ZERO_ADDRESS,
       balances: currentBalances,
-      indexIn: indexIn ? indexIn.toNumber() : 0,
-      indexOut: indexOut ? indexOut.toNumber() : 0,
+      indexIn: typeof params.in === 'number' ? params.in : 0,
+      indexOut: typeof params.out === 'number' ? params.out : 0,
       lastChangeBlock: params.lastChangeBlock ?? 0,
       data: params.data ?? '0x',
       amount: params.amount,

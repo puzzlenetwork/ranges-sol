@@ -40,7 +40,7 @@ contract RangePoolFactory is BasePoolFactory {
     }
 
     /**
-     * @dev Deploys a new `WeightedPool`.
+     * @dev Deploys a new `RangePool`.
      */
     function create(
         string memory name,

@@ -27,7 +27,7 @@ export type RawRangePoolDeployment = {
 export type RangePoolDeployment = {
   tokens: TokenList;
   weights: BigNumberish[];
-  virtualBalances?: BigNumberish[];
+  virtualBalances: BigNumberish[];
   rateProviders: Account[];
   assetManagers: string[];
   swapFeePercentage: BigNumberish;

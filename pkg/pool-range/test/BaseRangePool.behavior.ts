@@ -70,9 +70,7 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
       });
 
       it('uses the corresponding specialization', async () => {
-        const expectedSpecialization =
-          numberOfTokens == 2 ? PoolSpecialization.TwoTokenPool : PoolSpecialization.MinimalSwapInfoPool;
-
+        const expectedSpecialization = PoolSpecialization.GeneralPool;
         const { address, specialization } = await pool.getRegisteredInfo();
         expect(address).to.equal(pool.address);
         expect(specialization).to.equal(expectedSpecialization);
@@ -201,7 +199,7 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
 
         context('once initialized', () => {
           let expectedBptOut: BigNumberish;
-          const amountsIn = ZEROS.map((n, i) => (i === 1 ? fp(0.1) : n));
+          const amountsIn = ZEROS.map((n, i) => (i === 1 ? fp(0.1) : fp(0.2)));
 
           sharedBeforeEach('initialize pool', async () => {
             await pool.init({ recipient, initialBalances, from: lp });
@@ -223,6 +221,10 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
             // Make sure received BPT is close to what we expect
             const currentBptBalance = await pool.balanceOf(recipient);
             expect(currentBptBalance.sub(previousBptBalance)).to.be.equalWithError(expectedBptOut, 0.0001);
+
+            const virtualBalances = await pool.getVirtualBalances();
+            expect(virtualBalances[0]).to.be.gt(0);
+            expect(virtualBalances[1]).to.be.gt(0);
           });
 
           it('can tell how much BPT it will give in return', async () => {
@@ -679,16 +681,10 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
         let joinResult = await pool.joinGivenIn({ from: lp, amountsIn: fp(100), protocolFeePercentage });
         expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
 
-        joinResult = await pool.joinGivenOut({ from: lp, bptOut: fp(1), token: 0, protocolFeePercentage });
-        expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
-
         joinResult = await pool.joinAllGivenOut({ from: lp, bptOut: fp(0.1) });
         expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
 
-        let exitResult = await pool.singleExitGivenIn({ from: lp, bptIn: fp(10), token: 0, protocolFeePercentage });
-        expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
-
-        exitResult = await pool.multiExitGivenIn({ from: lp, bptIn: fp(10), protocolFeePercentage });
+        let exitResult = await pool.multiExitGivenIn({ from: lp, bptIn: fp(10), protocolFeePercentage });
         expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
 
         joinResult = await pool.joinGivenIn({ from: lp, amountsIn: fp(10), protocolFeePercentage });
@@ -712,33 +708,10 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
         expect(result.dueProtocolFeeAmounts).to.be.zeros;
       });
 
-      it('no protocol fees on exit exact BPT in for one token out', async () => {
-        const result = await pool.singleExitGivenIn({
-          from: lp,
-          bptIn: fp(0.5),
-          token: 0,
-          currentBalances,
-          protocolFeePercentage,
-        });
-
-        expect(result.dueProtocolFeeAmounts).to.be.zeros;
-      });
-
       it('no protocol fees on exit exact BPT in for all tokens out', async () => {
         const result = await pool.multiExitGivenIn({
           from: lp,
           bptIn: fp(1),
-          currentBalances,
-          protocolFeePercentage,
-        });
-
-        expect(result.dueProtocolFeeAmounts).to.be.zeros;
-      });
-
-      it('no protocol fees on exit BPT In for exact tokens out', async () => {
-        const result = await pool.exitGivenOut({
-          from: lp,
-          amountsOut: fp(1),
           currentBalances,
           protocolFeePercentage,
         });

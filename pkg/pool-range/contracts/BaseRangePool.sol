@@ -49,14 +49,7 @@ abstract contract BaseRangePool is BaseGeneralPool {
     )
         BasePool(
             vault,
-            // Given BaseMinimalSwapInfoPool supports both of these specializations, and this Pool never registers
-            // or deregisters any tokens after construction, picking Two Token when the Pool only has two tokens is free
-            // gas savings.
-            // If the pool is expected to be able register new tokens in future, we must choose MINIMAL_SWAP_INFO
-            // as clearly the TWO_TOKEN specification doesn't support adding extra tokens in future.
-            tokens.length == 2 && !mutableTokens
-                ? IVault.PoolSpecialization.TWO_TOKEN
-                : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
+            IVault.PoolSpecialization.GENERAL,
             name,
             symbol,
             tokens,
@@ -260,6 +253,8 @@ abstract contract BaseRangePool is BaseGeneralPool {
 
         // Initialization is still a join, so we need to do post-join work. Since we are not paying protocol fees,
         // and all we need to do is update the invariant, call `_updatePostJoinExit` here instead of `_afterJoinExit`.
+        _increaseVirtualBalances(amountsIn);
+     
         _updatePostJoinExit(invariantAfterJoin);
 
         return (bptAmountOut, amountsIn);

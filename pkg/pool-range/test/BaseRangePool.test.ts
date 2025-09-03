@@ -20,7 +20,7 @@ describe('BaseRangePool', function () {
     itBehavesAsRangePool(2);
   });
 
-  /*context('for a 3 token pool', () => {
+  context('for a 3 token pool', () => {
     itBehavesAsRangePool(3);
   });
 
@@ -32,5 +32,5 @@ describe('BaseRangePool', function () {
 
       await expect(RangePool.create({ tokens, weights })).to.be.revertedWith('MAX_TOKENS');
     });
-  });*/
+  });
 });
