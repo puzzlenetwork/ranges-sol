@@ -17,7 +17,7 @@ import RangePool from './helpers/RangePool';
 export function itBehavesAsRangePool(numberOfTokens: number): void {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
-  const VIRTUAL_BALANCES = [fp(1), fp(2), fp(3), fp(4)];
+  const VIRTUAL_BALANCES = [fp(10), fp(20), fp(30), fp(40)];
   const INITIAL_BALANCES = [fp(0.1), fp(0.2), fp(0.3), fp(0.4)];
   const GENERAL_POOL_ONSWAP =
     'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256[],uint256,uint256)';
@@ -33,13 +33,13 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
 
   async function deployPool(params: RawRangePoolDeployment = {}): Promise<void> {
     pool = await RangePool.create({
-        vault,
-        tokens,
-        weights,
-        virtualBalances,
-        swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-        ...params,
-      });
+      vault,
+      tokens,
+      weights,
+      virtualBalances,
+      swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+      ...params,
+    });
   }
 
   before('setup signers', async () => {
@@ -50,7 +50,16 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
     vault = await Vault.create();
 
     const tokenAmounts = fp(100);
-    allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT', 'GRT'], { sorted: true });
+    allTokens = await TokenList.create(
+      [
+        { symbol: 'MKR', decimals: 18 },
+        { symbol: 'DAI', decimals: 6 },
+        { symbol: 'SNX', decimals: 8 },
+        { symbol: 'BAT', decimals: 18 },
+        { symbol: 'GRT', decimals: 6 },
+      ],
+      { sorted: true }
+    );
     await allTokens.mint({ to: lp, amount: tokenAmounts });
     await allTokens.approve({ to: vault.address, from: lp, amount: tokenAmounts });
   });
@@ -108,6 +117,11 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
 
       it('sets the decimals', async () => {
         expect(await pool.decimals()).to.equal(18);
+      });
+
+      it('sets the virtual balances', async () => {
+        expect((await pool.getVirtualBalances())[0]).to.equal(VIRTUAL_BALANCES[0]);
+        expect((await pool.getVirtualBalances())[1]).to.equal(VIRTUAL_BALANCES[1]);
       });
     });
 
