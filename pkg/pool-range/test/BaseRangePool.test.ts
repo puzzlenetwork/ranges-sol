@@ -27,7 +27,7 @@ describe('BaseRangePool', function () {
   context('for a too-many token pool', () => {
     it('reverts if there are too many tokens', async () => {
       // The maximum number of tokens is 20
-      const tokens = await TokenList.create(21);
+      const tokens = await TokenList.create(11);
       const weights = new Array(21).fill(fp(1));
 
       await expect(RangePool.create({ tokens, weights })).to.be.revertedWith('MAX_TOKENS');
