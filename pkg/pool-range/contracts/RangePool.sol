@@ -72,7 +72,6 @@ contract RangePool is BaseRangePool, RangePoolProtocolFees {
         string symbol;
         IERC20[] tokens;
         uint256[] normalizedWeights;
-        uint256[] virtualBalances;
         IRateProvider[] rateProviders;
         address[] assetManagers;
         uint256 swapFeePercentage;
@@ -106,7 +105,6 @@ contract RangePool is BaseRangePool, RangePoolProtocolFees {
     {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
-        InputHelpers.ensureInputLengthMatch(numTokens, params.virtualBalances.length);
 
         _totalTokens = numTokens;
 
@@ -118,7 +116,7 @@ contract RangePool is BaseRangePool, RangePoolProtocolFees {
             _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
             normalizedSum = normalizedSum.add(normalizedWeight);
             
-            _virtualBalances.push(params.virtualBalances[i]);
+            _virtualBalances.push(0);
         }
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
@@ -229,28 +227,26 @@ contract RangePool is BaseRangePool, RangePoolProtocolFees {
         return _virtualBalances[_getTokenIndex(token)];
     }
 
-    function _increaseVirtualBalance(IERC20 token, uint256 delta) internal virtual override {
+    function _changeVirtualBalance(IERC20 token, uint256 delta, bool increase) internal virtual override {
         uint256 tokenIdx = _getTokenIndex(token);
-        _virtualBalances[tokenIdx] = _virtualBalances[tokenIdx].add(delta);
+        uint256 downScaledDelta = _downscaleDown(delta, _scalingFactor(token));
+        _virtualBalances[tokenIdx] = increase ? _virtualBalances[tokenIdx].add(downScaledDelta) :
+            _virtualBalances[tokenIdx].sub(downScaledDelta);
     }
 
-    function _decreaseVirtualBalance(IERC20 token, uint256 delta) internal virtual override {
-        uint256 tokenIdx = _getTokenIndex(token);
-        _virtualBalances[tokenIdx] = _virtualBalances[tokenIdx].sub(delta);
-    }
-
-    function _increaseVirtualBalances(uint256[] memory deltas) internal virtual override {
+    function _setVirtualBalances(uint256[] memory balances) internal virtual override {
         for (uint256 i = 0; i < _totalTokens; i++) {
-            _virtualBalances[i] = _virtualBalances[i].add(deltas[i]);
+            _virtualBalances[i] = balances[i];
         }
     }
 
-    function _decreaseVirtualBalances(uint256[] memory deltas) internal virtual override {
+    function _changeVirtualBalancesBy(uint256 ratioMin, bool increase) internal virtual override {
         for (uint256 i = 0; i < _totalTokens; i++) {
-            _virtualBalances[i] = _virtualBalances[i].sub(deltas[i]);
+            uint256 value = _virtualBalances[i].mulUp(ratioMin).divDown(FixedPoint.ONE);
+            _virtualBalances[i] = increase ? _virtualBalances[i].add(value) : _virtualBalances[i].sub(value);
         }
     }
-    
+
     /**
      * @dev Returns the scaling factor for one of the Pool's tokens. Reverts if `token` is not a token registered by the
      * Pool.

@@ -34,6 +34,7 @@ import {
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 
 import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { RangePoolEncoder } from './encoder';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import BasePool from '@balancer-labs/v2-helpers/src/models/pools/base/BasePool';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
@@ -394,14 +395,15 @@ export default class BaseRangePool extends BasePool {
   }
 
   private _buildInitParams(params: InitRangePool): JoinExitRangePool {
-    const { initialBalances: balances } = params;
+    const { initialBalances: balances, initialVirtualBalances: virtualBalances } = params;
     const amountsIn = Array.isArray(balances) ? balances : Array(this.tokens.length).fill(balances);
-
+    const vBalances = Array.isArray(virtualBalances) ? virtualBalances : Array(this.tokens.length).fill(virtualBalances);
+    
     return {
       from: params.from,
       recipient: params.recipient,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: WeightedPoolEncoder.joinInit(amountsIn),
+      data: RangePoolEncoder.joinInit(amountsIn, vBalances),
     };
   }
 

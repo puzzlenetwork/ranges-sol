@@ -27,7 +27,6 @@ export type RawRangePoolDeployment = {
 export type RangePoolDeployment = {
   tokens: TokenList;
   weights: BigNumberish[];
-  virtualBalances: BigNumberish[];
   rateProviders: Account[];
   assetManagers: string[];
   swapFeePercentage: BigNumberish;
@@ -60,6 +59,7 @@ export type JoinExitRangePool = {
 
 export type InitRangePool = {
   initialBalances: NAry<BigNumberish>;
+  initialVirtualBalances: NAry<BigNumberish>;
   from?: SignerWithAddress;
   recipient?: Account;
   protocolFeePercentage?: BigNumberish;

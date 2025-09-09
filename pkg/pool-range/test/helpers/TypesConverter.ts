@@ -23,7 +23,6 @@ export default {
     let {
       tokens,
       weights,
-      virtualBalances,
       rateProviders,
       assetManagers,
       swapFeePercentage,
@@ -34,7 +33,6 @@ export default {
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = Array(tokens.length).fill(fp(1));
     weights = toNormalizedWeights(weights.map(bn));
-    if (!virtualBalances) virtualBalances = Array(tokens.length).fill(0);
     if (!swapFeePercentage) swapFeePercentage = bn(1e16);
     if (!pauseWindowDuration) pauseWindowDuration = DEFAULT_PAUSE_WINDOW_DURATION;
     if (!bufferPeriodDuration) bufferPeriodDuration = DEFAULT_BUFFER_PERIOD_DURATION;
@@ -44,7 +42,6 @@ export default {
     return {
       tokens,
       weights,
-      virtualBalances,
       rateProviders,
       assetManagers,
       swapFeePercentage,

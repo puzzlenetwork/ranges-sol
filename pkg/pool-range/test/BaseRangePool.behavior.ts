@@ -17,7 +17,7 @@ import RangePool from './helpers/RangePool';
 export function itBehavesAsRangePool(numberOfTokens: number): void {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
-  const VIRTUAL_BALANCES = [fp(10), fp(20), fp(30), fp(40)];
+  const VIRTUAL_BALANCES = [fp(0.2), fp(0.4), fp(0.6), fp(0.8)];
   const INITIAL_BALANCES = [fp(0.1), fp(0.2), fp(0.3), fp(0.4)];
   const GENERAL_POOL_ONSWAP =
     'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256[],uint256,uint256)';
@@ -28,7 +28,7 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
 
   const ZEROS = Array(numberOfTokens).fill(bn(0));
   const weights: BigNumberish[] = WEIGHTS.slice(0, numberOfTokens);
-  const virtualBalances: BigNumberish[] = VIRTUAL_BALANCES.slice(0, numberOfTokens);
+  const initialVirtualBalances: BigNumberish[] = VIRTUAL_BALANCES.slice(0, numberOfTokens);
   const initialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
 
   async function deployPool(params: RawRangePoolDeployment = {}): Promise<void> {
@@ -36,7 +36,6 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
       vault,
       tokens,
       weights,
-      virtualBalances,
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
       ...params,
     });
@@ -120,8 +119,8 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
       });
 
       it('sets the virtual balances', async () => {
-        expect((await pool.getVirtualBalances())[0]).to.equal(VIRTUAL_BALANCES[0]);
-        expect((await pool.getVirtualBalances())[1]).to.equal(VIRTUAL_BALANCES[1]);
+        expect((await pool.getVirtualBalances())[0]).to.equal(0);
+        expect((await pool.getVirtualBalances())[1]).to.equal(0);
       });
     });
 
@@ -179,7 +178,11 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
         it('grants the n * invariant amount of BPT', async () => {
           const invariant = await pool.estimateInvariant(initialBalances);
 
-          const { amountsIn, dueProtocolFeeAmounts } = await pool.init({ recipient, initialBalances, from: lp });
+          const { amountsIn, dueProtocolFeeAmounts } = await pool.init({
+            initialBalances,
+            initialVirtualBalances,
+            recipient,
+            from: lp });
 
           // Amounts in should be the same as initial ones
           expect(amountsIn).to.deep.equal(initialBalances);
@@ -192,15 +195,25 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
         });
 
         it('fails if already initialized', async () => {
-          await pool.init({ recipient, initialBalances, from: lp });
+          await pool.init({
+            initialBalances,
+            initialVirtualBalances,
+            recipient,
+            from: lp });
 
-          await expect(pool.init({ initialBalances, from: lp })).to.be.revertedWith('UNHANDLED_JOIN_KIND');
+          await expect(pool.init({
+            initialBalances,
+            initialVirtualBalances,
+            from: lp })).to.be.revertedWith('UNHANDLED_JOIN_KIND');
         });
 
         it('reverts if paused', async () => {
           await pool.pause();
 
-          await expect(pool.init({ initialBalances, from: lp })).to.be.revertedWith('PAUSED');
+          await expect(pool.init({
+            initialBalances,
+            initialVirtualBalances,
+            from: lp })).to.be.revertedWith('PAUSED');
         });
       });
 
@@ -216,7 +229,11 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
           const amountsIn = ZEROS.map((n, i) => (i === 1 ? fp(0.1) : fp(0.2)));
 
           sharedBeforeEach('initialize pool', async () => {
-            await pool.init({ recipient, initialBalances, from: lp });
+            await pool.init({
+              initialBalances,
+              initialVirtualBalances,
+              recipient,
+              from: lp });
             expectedBptOut = await pool.estimateBptOut(amountsIn, initialBalances);
           });
 
@@ -274,7 +291,11 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
 
         context('once initialized', () => {
           sharedBeforeEach('initialize pool', async () => {
-            await pool.init({ recipient, initialBalances, from: lp });
+            await pool.init({
+              initialBalances,
+              initialVirtualBalances,
+              recipient: recipient,
+              from: lp });
           });
 
           it('grants exact BPT for tokens in', async () => {
@@ -464,7 +485,10 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
 
     sharedBeforeEach('deploy and initialize pool', async () => {
       await deployPool();
-      await pool.init({ initialBalances, from: lp });
+      await pool.init({
+        initialBalances,
+        initialVirtualBalances,
+        from: lp });
       previousBptBalance = await pool.balanceOf(lp);
     });
 
@@ -622,7 +646,10 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
 
     sharedBeforeEach('deploy and join pool', async () => {
       await deployPool();
-      await pool.init({ initialBalances, from: lp });
+      await pool.init({
+        initialBalances,
+        initialVirtualBalances,
+        from: lp });
     });
 
     context('when not in recovery mode', () => {
@@ -641,7 +668,10 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
   describe('recovery mode', () => {
     sharedBeforeEach('deploy pool and enter recovery mode', async () => {
       await deployPool();
-      await pool.init({ initialBalances, from: lp });
+      await pool.init({
+        initialBalances,
+        initialVirtualBalances,
+        from: lp });
       await pool.enableRecoveryMode();
     });
 
@@ -689,7 +719,11 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
     sharedBeforeEach('deploy and join pool', async () => {
       // We will use a mock vault for this one since we'll need to manipulate balances.
       await deployPool({ vault: await Vault.create({ mocked: true }) });
-      await pool.init({ initialBalances, from: lp, protocolFeePercentage });
+      await pool.init({
+        initialBalances,
+        initialVirtualBalances,
+        from: lp,
+        protocolFeePercentage });
     });
 
     context('without balance changes', () => {

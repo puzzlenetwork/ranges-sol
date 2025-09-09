@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-range/RangePoolUserData.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -35,6 +36,7 @@ abstract contract BaseRangePool is BaseGeneralPool {
     using FixedPoint for uint256;
     using BasePoolUserData for bytes;
     using WeightedPoolUserData for bytes;
+    using RangePoolUserData for bytes;
 
     constructor(
         IVault vault,
@@ -92,24 +94,19 @@ abstract contract BaseRangePool is BaseGeneralPool {
     function _getVirtualBalance(IERC20 token) internal view virtual returns (uint256);
 
     /**
-     * @dev Increases the virtual balance of `token`.
+     * @dev Sets the virtual balances of `initialization`.
      */
-    function _increaseVirtualBalance(IERC20 token, uint256 delta) internal virtual;
+    function _setVirtualBalances(uint256[] memory deltas) internal virtual;
 
     /**
-     * @dev Decreases the virtual balance of `token`.
+     * @dev Changes the virtual balance of `token`.
      */
-    function _decreaseVirtualBalance(IERC20 token, uint256 delta) internal virtual;
+    function _changeVirtualBalance(IERC20 token, uint256 delta, bool increase) internal virtual;
 
     /**
-     * @dev Increases the virtual balances of `join`.
+     * @dev Changes the virtual balances of `join` by ratioMin.
      */
-    function _increaseVirtualBalances(uint256[] memory deltas) internal virtual;
-
-    /**
-     * @dev Decreases the virtual balances of `exit`.
-     */
-    function _decreaseVirtualBalances(uint256[] memory deltas) internal virtual;
+    function _changeVirtualBalancesBy(uint256 ratioMin, bool increase) internal virtual;
 
     /**
      * @dev Returns the current value of the invariant.
@@ -165,8 +162,8 @@ abstract contract BaseRangePool is BaseGeneralPool {
                 balances[tokenOutIdx]
             );
 
-        _increaseVirtualBalance(swapRequest.tokenIn, swapRequest.amount);
-        _decreaseVirtualBalance(swapRequest.tokenOut, amountOut);
+        _changeVirtualBalance(swapRequest.tokenIn, swapRequest.amount, true);
+        _changeVirtualBalance(swapRequest.tokenOut, amountOut, false);
         return amountOut;
     }
 
@@ -188,8 +185,8 @@ abstract contract BaseRangePool is BaseGeneralPool {
                 swapRequest.amount
             );
 
-        _increaseVirtualBalance(swapRequest.tokenIn, amountIn);
-        _decreaseVirtualBalance(swapRequest.tokenOut, swapRequest.amount);
+        _changeVirtualBalance(swapRequest.tokenIn, amountIn, true);
+        _changeVirtualBalance(swapRequest.tokenOut, swapRequest.amount, false);
         return amountIn;
     }
 
@@ -242,7 +239,9 @@ abstract contract BaseRangePool is BaseGeneralPool {
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
+        uint256[] memory virtualBalances = userData.initialVirtualBalances();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
+        InputHelpers.ensureInputLengthMatch(amountsIn.length, virtualBalances.length);
         _upscaleArray(amountsIn, scalingFactors);
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
@@ -254,7 +253,7 @@ abstract contract BaseRangePool is BaseGeneralPool {
 
         // Initialization is still a join, so we need to do post-join work. Since we are not paying protocol fees,
         // and all we need to do is update the invariant, call `_updatePostJoinExit` here instead of `_afterJoinExit`.
-        _increaseVirtualBalances(amountsIn);
+        _setVirtualBalances(virtualBalances);
      
         _updatePostJoinExit(invariantAfterJoin);
 
@@ -286,7 +285,8 @@ abstract contract BaseRangePool is BaseGeneralPool {
             userData
         );
 
-        _increaseVirtualBalances(amountsIn);
+        uint256 minRatio =  bptAmountOut.mulUp(FixedPoint.ONE).divDown(preJoinExitSupply);
+        _changeVirtualBalancesBy(minRatio, true);
 
         _afterJoinExit(
             preJoinExitInvariant,
@@ -384,7 +384,8 @@ abstract contract BaseRangePool is BaseGeneralPool {
             userData
         );
 
-        _decreaseVirtualBalances(amountsOut);
+        uint256 minRatio = bptAmountIn.mulUp(FixedPoint.ONE).divDown(preJoinExitSupply);
+        _changeVirtualBalancesBy(minRatio, false);
 
         _afterJoinExit(
             preJoinExitInvariant,

@@ -98,13 +98,7 @@ library RangeMath {
         uint256[] memory amountsIn,
         uint256 bptTotalSupply
     ) internal pure returns (uint256) {
-        uint256 ratioMin = amountsIn[0].mulUp(FixedPoint.ONE).divDown(factBalances[0]);
-        uint256 i = 1;
-        while (i < factBalances.length && ratioMin > 0) {
-            ratioMin = Math.min(ratioMin, amountsIn[i].mulUp(FixedPoint.ONE).divDown(factBalances[i]));
-            i++;
-        }
-
+        uint256 ratioMin = _calcRatioMin(factBalances, amountsIn);
         return bptTotalSupply.mulUp(ratioMin).divDown(FixedPoint.ONE);
     }
 
@@ -113,13 +107,28 @@ library RangeMath {
         uint256[] memory amountsOut,
         uint256 bptTotalSupply
     ) internal pure returns (uint256) {
-        uint256 ratioMin = amountsOut[0].mulUp(FixedPoint.ONE).divDown(factBalances[0]);
-        uint256 i = 1;
-        while (i < factBalances.length && ratioMin > 0) {
-            ratioMin = Math.min(ratioMin, amountsOut[i].mulUp(FixedPoint.ONE).divDown(factBalances[i]));
+        uint256 ratioMin = _calcRatioMin(factBalances, amountsOut);
+        return bptTotalSupply.mulUp(ratioMin).divDown(FixedPoint.ONE);
+    }
+
+    function _calcRatioMin(
+        uint256[] memory factBalances,
+        uint256[] memory amounts
+    ) internal pure returns (uint256) {
+        uint256 ratioMin = 0;
+        uint256 i = 0;
+        while (i < factBalances.length) {
+            if (factBalances[i] > 0) {
+                uint256 currentRatio = amounts[i].mulUp(FixedPoint.ONE).divDown(factBalances[i]);
+                if (ratioMin > 0) {
+                    ratioMin = Math.min(ratioMin, currentRatio);
+                    if (ratioMin == 0) break;
+                } else {
+                    ratioMin = currentRatio;
+                }
+            }
             i++;
         }
-
-        return bptTotalSupply.mulUp(ratioMin).divDown(FixedPoint.ONE);
+        return ratioMin;
     }
 }

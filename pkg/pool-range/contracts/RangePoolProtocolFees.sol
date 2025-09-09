@@ -110,7 +110,8 @@ abstract contract RangePoolProtocolFees is BaseRangePool, ProtocolFeeCache, IRat
     }
 
     function getRateProviders() external view override returns (IRateProvider[] memory) {
-        uint256 totalTokens = _getTotalTokens();
+        // commented due to contract size exeeds 24k
+        /*uint256 totalTokens = _getTotalTokens();
         IRateProvider[] memory providers = new IRateProvider[](totalTokens);
 
         // prettier-ignore
@@ -127,7 +128,7 @@ abstract contract RangePoolProtocolFees is BaseRangePool, ProtocolFeeCache, IRat
             if (totalTokens > 9) { providers[9] = _rateProvider9; } else { return providers; }
         }
 
-        return providers;
+        return providers;*/
     }
 
     // Protocol Fees

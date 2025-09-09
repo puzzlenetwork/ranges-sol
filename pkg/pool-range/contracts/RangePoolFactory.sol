@@ -47,7 +47,6 @@ contract RangePoolFactory is BasePoolFactory {
         string memory symbol,
         IERC20[] memory tokens,
         uint256[] memory normalizedWeights,
-        uint256[] memory virtualBalances,
         IRateProvider[] memory rateProviders,
         uint256 swapFeePercentage,
         address owner,
@@ -63,7 +62,6 @@ contract RangePoolFactory is BasePoolFactory {
                         symbol: symbol,
                         tokens: tokens,
                         normalizedWeights: normalizedWeights,
-                        virtualBalances: virtualBalances,
                         rateProviders: rateProviders,
                         assetManagers: new address[](tokens.length), // Don't allow asset managers,
                         swapFeePercentage: swapFeePercentage
