@@ -176,7 +176,7 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
 
       context('initialization', () => {
         it('grants the n * invariant amount of BPT', async () => {
-          const invariant = await pool.estimateInvariant(initialBalances);
+          const invariant = await pool.estimateInvariant(initialVirtualBalances);
 
           const { amountsIn, dueProtocolFeeAmounts } = await pool.init({
             initialBalances,
@@ -549,14 +549,20 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
           expect(result.amount).to.be.equalWithError(expectedAmountOut, 0.05);
         });
 
-        // excluded since max in ratio is not checked
-        /*it('reverts if token in exceeds max in ratio', async () => {
-          const maxAmountIn = await pool.getMaxIn(1);
-          const maxAmountInWithFees = fpMul(maxAmountIn, POOL_SWAP_FEE_PERCENTAGE.add(fp(1)));
+        it('swap all amount of token#0 and join tokens again', async () => {
+          expect((await pool.getBalances())[0]).to.be.gt(0);
 
-          const amount = maxAmountInWithFees.add(fp(1));
-          await expect(pool.swapGivenIn({ in: 1, out: 0, amount, from: lp })).to.be.revertedWith('MAX_IN_RATIO');
-        });*/
+          const maxAmountOut = await pool.getMaxOut(0);
+          await pool.swapGivenOut({ in: 1, out: 0, amount: maxAmountOut, from: lp, recipient });
+
+          expect((await pool.getBalances())[0]).to.be.eq(0);
+
+          const amountsIn = ZEROS.map((n, i) => (i === 1 ? fp(0.1) : fp(0.2)));
+          const minimumBptOut = bn(1);
+          await pool.joinGivenIn({ amountsIn, minimumBptOut, from: lp });
+
+          expect((await pool.getBalances())[0]).to.be.gt(0);
+        });
 
         it('reverts if token in is not in the pool', async () => {
           await expect(pool.swapGivenIn({ in: allTokens.GRT, out: 0, amount: 1, from: lp })).to.be.revertedWith(

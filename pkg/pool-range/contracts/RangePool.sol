@@ -307,14 +307,14 @@ contract RangePool is BaseRangePool, RangePoolProtocolFees {
 
     // WeightedPoolProtocolFees functions
 
-    function _beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights)
+    function _beforeJoinExit(uint256[] memory /*preBalances*/, uint256[] memory normalizedWeights)
         internal
         virtual
         override
         returns (uint256, uint256)
     {
         uint256 supplyBeforeFeeCollection = totalSupply();
-        uint256 invariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
+        uint256 invariant = getInvariant();
         (uint256 protocolFeesToBeMinted, uint256 athRateProduct) = _getPreJoinExitProtocolFees(
             invariant,
             normalizedWeights,

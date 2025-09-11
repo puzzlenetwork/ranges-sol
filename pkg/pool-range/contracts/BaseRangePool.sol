@@ -25,6 +25,7 @@ import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/BasePoolMath.sol";
 import "@balancer-labs/v2-pool-weighted/contracts/WeightedMath.sol";
 
+import "./RangeInputHelpers.sol";
 import "./RangeMath.sol";
 
 /**
@@ -123,7 +124,7 @@ abstract contract BaseRangePool is BaseGeneralPool {
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function getInvariant() public view returns (uint256) {
-        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+        uint256[] memory balances = _getVirtualBalances();
 
         // Since the Pool hooks always work with upscaled balances, we manually
         // upscale here for consistency
@@ -194,13 +195,10 @@ abstract contract BaseRangePool is BaseGeneralPool {
      * @dev Called before any join or exit operation. Returns the Pool's total supply by default, but derived contracts
      * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
      */
-    function _beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights)
+    function _beforeJoinExit(uint256[] memory /*preBalances*/, uint256[] memory /*normalizedWeights*/)
         internal
         virtual
-        returns (uint256, uint256)
-    {
-        return (totalSupply(), WeightedMath._calculateInvariant(normalizedWeights, preBalances));
-    }
+        returns (uint256, uint256);
 
     /**
      * @dev Called after any regular join or exit operation. Empty by default, but derived contracts
@@ -217,14 +215,10 @@ abstract contract BaseRangePool is BaseGeneralPool {
         uint256[] memory normalizedWeights,
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
-    ) internal virtual {
-        // solhint-disable-previous-line no-empty-blocks
-    }
+    ) internal virtual;
 
     // Derived contracts may call this to update state after a join or exit.
-    function _updatePostJoinExit(uint256 postJoinExitInvariant) internal virtual {
-        // solhint-disable-previous-line no-empty-blocks
-    }
+    function _updatePostJoinExit(uint256 postJoinExitInvariant) internal virtual;
 
     // Initialize
 
@@ -241,11 +235,11 @@ abstract contract BaseRangePool is BaseGeneralPool {
         uint256[] memory amountsIn = userData.initialAmountsIn();
         uint256[] memory virtualBalances = userData.initialVirtualBalances();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
-        InputHelpers.ensureInputLengthMatch(amountsIn.length, virtualBalances.length);
+        RangeInputHelpers.ensureFactBalanceIsLessOrEqual(amountsIn, virtualBalances);
         _upscaleArray(amountsIn, scalingFactors);
 
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(normalizedWeights, amountsIn);
+        _setVirtualBalances(virtualBalances);
+        uint256 invariantAfterJoin = getInvariant();
 
         // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
         // consistent in Pools with similar compositions but different number of tokens.
@@ -253,8 +247,6 @@ abstract contract BaseRangePool is BaseGeneralPool {
 
         // Initialization is still a join, so we need to do post-join work. Since we are not paying protocol fees,
         // and all we need to do is update the invariant, call `_updatePostJoinExit` here instead of `_afterJoinExit`.
-        _setVirtualBalances(virtualBalances);
-     
         _updatePostJoinExit(invariantAfterJoin);
 
         return (bptAmountOut, amountsIn);

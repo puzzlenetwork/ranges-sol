@@ -81,12 +81,12 @@ export default class BaseRangePool extends BasePool {
 
   async getMaxIn(tokenIndex: number, currentBalances?: BigNumber[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
-    return fpMul(currentBalances[tokenIndex], MAX_IN_RATIO);
+    return currentBalances[tokenIndex];
   }
 
   async getMaxOut(tokenIndex: number, currentBalances?: BigNumber[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
-    return fpMul(currentBalances[tokenIndex], MAX_OUT_RATIO);
+    return currentBalances[tokenIndex];
   }
 
   async getNormalizedWeights(): Promise<BigNumber[]> {
