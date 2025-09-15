@@ -22,49 +22,56 @@ import "./RangeMath.sol";
  */
 contract ExternalRangeMath {
     function calcOutGivenIn(
-        uint256 balanceIn,
+        uint256 virtualBalanceIn,
         uint256 weightIn,
-        uint256 balanceOut,
+        uint256 virtualBalanceOut,
         uint256 weightOut,
         uint256 amountIn,
         uint256 factBalance
     ) external pure returns (uint256) {
-        return RangeMath._calcOutGivenIn(balanceIn, weightIn, balanceOut, weightOut, amountIn, factBalance);
+        return RangeMath._calcOutGivenIn(virtualBalanceIn, weightIn, virtualBalanceOut, weightOut, amountIn, factBalance);
     }
 
     function calcInGivenOut(
-        uint256 balanceIn,
+        uint256 virtualBalanceIn,
         uint256 weightIn,
-        uint256 balanceOut,
+        uint256 virtualBalanceOut,
         uint256 weightOut,
         uint256 amountOut
     ) external pure returns (uint256) {
-        return RangeMath._calcInGivenOut(balanceIn, weightIn, balanceOut, weightOut, amountOut);
+        return RangeMath._calcInGivenOut(virtualBalanceIn, weightIn, virtualBalanceOut, weightOut, amountOut);
     }
 
     function calcBptOutGivenExactTokensIn(
-        uint256[] memory balances,
+        uint256[] memory factBalances,
         uint256[] memory amountsIn,
         uint256 bptTotalSupply
     ) external pure returns (uint256) {
         return
             RangeMath._calcBptOutGivenExactTokensIn(
-                balances,
+                factBalances,
                 amountsIn,
                 bptTotalSupply
             );
     }
 
     function calcBptInGivenExactTokensOut(
-        uint256[] memory balances,
+        uint256[] memory factBalances,
         uint256[] memory amountsOut,
         uint256 bptTotalSupply
     ) external pure returns (uint256) {
         return
             RangeMath._calcBptInGivenExactTokensOut(
-                balances,
+                factBalances,
                 amountsOut,
                 bptTotalSupply
             );
     }
+
+    function calcRatioMin(
+        uint256[] memory factBalances,
+        uint256[] memory amounts
+    ) external pure returns (uint256) {
+        return RangeMath._calcRatioMin(factBalances, amounts);
+    }    
 }

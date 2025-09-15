@@ -124,14 +124,14 @@ abstract contract BaseRangePool is BaseGeneralPool {
      * See https://forum.balancer.fi/t/reentrancy-vulnerability-scope-expanded/4345 for reference.
      */
     function getInvariant() public view returns (uint256) {
-        uint256[] memory balances = _getVirtualBalances();
+        uint256[] memory virtualBalances = _getVirtualBalances();
 
         // Since the Pool hooks always work with upscaled balances, we manually
         // upscale here for consistency
-        _upscaleArray(balances, _scalingFactors());
+        _upscaleArray(virtualBalances, _scalingFactors());
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
-        return WeightedMath._calculateInvariant(normalizedWeights, balances);
+        return WeightedMath._calculateInvariant(normalizedWeights, virtualBalances);
     }
 
     function getNormalizedWeights() external view returns (uint256[] memory) {
@@ -148,19 +148,19 @@ abstract contract BaseRangePool is BaseGeneralPool {
 
     function _onSwapGivenIn(
         SwapRequest memory swapRequest,
-        uint256[] memory balances,
+        uint256[] memory factBalances,
         uint256 /*indexIn*/,
         uint256 /*indexOut*/
     ) internal virtual override returns (uint256) {
         uint256 tokenOutIdx = _getTokenIndex(swapRequest.tokenOut);
-        _require(tokenOutIdx < balances.length, Errors.OUT_OF_BOUNDS);
+        _require(tokenOutIdx < factBalances.length, Errors.OUT_OF_BOUNDS);
         uint256 amountOut = RangeMath._calcOutGivenIn(
                 _getVirtualBalance(swapRequest.tokenIn),
                 _getNormalizedWeight(swapRequest.tokenIn),
                 _getVirtualBalance(swapRequest.tokenOut),
                 _getNormalizedWeight(swapRequest.tokenOut),
                 swapRequest.amount,
-                balances[tokenOutIdx]
+                factBalances[tokenOutIdx]
             );
 
         _changeVirtualBalance(swapRequest.tokenIn, swapRequest.amount, true);
@@ -170,13 +170,13 @@ abstract contract BaseRangePool is BaseGeneralPool {
 
     function _onSwapGivenOut(
         SwapRequest memory swapRequest,
-        uint256[] memory balances,
+        uint256[] memory factBalances,
         uint256 /*indexIn*/,
         uint256 /*indexOut*/
     ) internal virtual override returns (uint256) {
         uint256 tokenOutIdx = _getTokenIndex(swapRequest.tokenOut);
-        _require(tokenOutIdx < balances.length, Errors.OUT_OF_BOUNDS);
-        _require(balances[tokenOutIdx] >= swapRequest.amount, Errors.INSUFFICIENT_BALANCE);
+        _require(tokenOutIdx < factBalances.length, Errors.OUT_OF_BOUNDS);
+        _require(factBalances[tokenOutIdx] >= swapRequest.amount, Errors.INSUFFICIENT_BALANCE);
         uint256 amountIn =
             RangeMath._calcInGivenOut(
                 _getVirtualBalance(swapRequest.tokenIn),
@@ -210,7 +210,7 @@ abstract contract BaseRangePool is BaseGeneralPool {
      */
     function _afterJoinExit(
         uint256 preJoinExitInvariant,
-        uint256[] memory preBalances,
+        uint256[] memory preBalances, // virtual balances
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights,
         uint256 preJoinExitSupply,
@@ -258,7 +258,7 @@ abstract contract BaseRangePool is BaseGeneralPool {
         bytes32,
         address sender,
         address,
-        uint256[] memory balances,
+        uint256[] memory factBalances,
         uint256,
         uint256,
         uint256[] memory scalingFactors,
@@ -266,28 +266,28 @@ abstract contract BaseRangePool is BaseGeneralPool {
     ) internal virtual override returns (uint256, uint256[] memory) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        (uint256 preJoinExitSupply, uint256 preJoinExitInvariant) = _beforeJoinExit(balances, normalizedWeights);
+        (uint256 preJoinExitSupply, uint256 preJoinExitInvariant) = _beforeJoinExit(factBalances, normalizedWeights);
 
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
             sender,
-            balances,
+            factBalances,
             normalizedWeights,
             scalingFactors,
             preJoinExitSupply,
             userData
         );
 
-        uint256 minRatio =  bptAmountOut.mulUp(FixedPoint.ONE).divDown(preJoinExitSupply);
-        _changeVirtualBalancesBy(minRatio, true);
-
         _afterJoinExit(
             preJoinExitInvariant,
-            balances,
+            _getVirtualBalances(),
             amountsIn,
             normalizedWeights,
             preJoinExitSupply,
             preJoinExitSupply.add(bptAmountOut)
         );
+
+        uint256 minRatio =  bptAmountOut.mulUp(FixedPoint.ONE).divDown(preJoinExitSupply);
+        _changeVirtualBalancesBy(minRatio, true);
 
         return (bptAmountOut, amountsIn);
     }
@@ -299,7 +299,7 @@ abstract contract BaseRangePool is BaseGeneralPool {
      */
     function _doJoin(
         address,
-        uint256[] memory balances,
+        uint256[] memory factBalances,
         uint256[] memory /*normalizedWeights*/,
         uint256[] memory scalingFactors,
         uint256 totalSupply,
@@ -308,27 +308,27 @@ abstract contract BaseRangePool is BaseGeneralPool {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
 
         if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            return _joinExactTokensInForBPTOut(balances, scalingFactors, totalSupply, userData);
+            return _joinExactTokensInForBPTOut(factBalances, scalingFactors, totalSupply, userData);
         } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            return _joinAllTokensInForExactBPTOut(balances, totalSupply, userData);
+            return _joinAllTokensInForExactBPTOut(factBalances, totalSupply, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
     }
 
     function _joinExactTokensInForBPTOut(
-        uint256[] memory balances,
+        uint256[] memory factBalances,
         uint256[] memory scalingFactors,
         uint256 totalSupply,
         bytes memory userData
     ) private pure returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
-        InputHelpers.ensureInputLengthMatch(balances.length, amountsIn.length);
+        InputHelpers.ensureInputLengthMatch(factBalances.length, amountsIn.length);
 
         _upscaleArray(amountsIn, scalingFactors);
 
         uint256 bptAmountOut = RangeMath._calcBptOutGivenExactTokensIn(
-            balances,
+            factBalances,
             amountsIn,
             totalSupply
         );
@@ -339,14 +339,14 @@ abstract contract BaseRangePool is BaseGeneralPool {
     }
 
     function _joinAllTokensInForExactBPTOut(
-        uint256[] memory balances,
+        uint256[] memory factBalances,
         uint256 totalSupply,
         bytes memory userData
     ) private pure returns (uint256, uint256[] memory) {
         uint256 bptAmountOut = userData.allTokensInForExactBptOut();
         // Note that there is no maximum amountsIn parameter: this is handled by `IVault.joinPool`.
 
-        uint256[] memory amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, totalSupply, bptAmountOut);
+        uint256[] memory amountsIn = BasePoolMath.computeProportionalAmountsIn(factBalances, totalSupply, bptAmountOut);
 
         return (bptAmountOut, amountsIn);
     }
@@ -357,7 +357,7 @@ abstract contract BaseRangePool is BaseGeneralPool {
         bytes32,
         address sender,
         address,
-        uint256[] memory balances,
+        uint256[] memory factBalances,
         uint256,
         uint256,
         uint256[] memory scalingFactors,
@@ -365,28 +365,28 @@ abstract contract BaseRangePool is BaseGeneralPool {
     ) internal virtual override returns (uint256, uint256[] memory) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        (uint256 preJoinExitSupply, uint256 preJoinExitInvariant) = _beforeJoinExit(balances, normalizedWeights);
+        (uint256 preJoinExitSupply, uint256 preJoinExitInvariant) = _beforeJoinExit(factBalances, normalizedWeights);
 
         (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
             sender,
-            balances,
+            factBalances,
             normalizedWeights,
             scalingFactors,
             preJoinExitSupply,
             userData
         );
 
-        uint256 minRatio = bptAmountIn.mulUp(FixedPoint.ONE).divDown(preJoinExitSupply);
-        _changeVirtualBalancesBy(minRatio, false);
-
         _afterJoinExit(
             preJoinExitInvariant,
-            balances,
+            _getVirtualBalances(),
             amountsOut,
             normalizedWeights,
             preJoinExitSupply,
             preJoinExitSupply.sub(bptAmountIn)
         );
+
+        uint256 minRatio = bptAmountIn.mulUp(FixedPoint.ONE).divDown(preJoinExitSupply);
+        _changeVirtualBalancesBy(minRatio, false);
 
         return (bptAmountIn, amountsOut);
     }
@@ -398,7 +398,7 @@ abstract contract BaseRangePool is BaseGeneralPool {
      */
     function _doExit(
         address,
-        uint256[] memory balances,
+        uint256[] memory factBalances,
         uint256[] memory /*normalizedWeights*/,
         uint256[] memory scalingFactors,
         uint256 totalSupply,
@@ -407,39 +407,39 @@ abstract contract BaseRangePool is BaseGeneralPool {
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
         if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            return _exitExactBPTInForTokensOut(balances, totalSupply, userData);
+            return _exitExactBPTInForTokensOut(factBalances, totalSupply, userData);
         } else if (kind == WeightedPoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
-            return _exitBPTInForExactTokensOut(balances, scalingFactors, totalSupply, userData);
+            return _exitBPTInForExactTokensOut(factBalances, scalingFactors, totalSupply, userData);
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
     }
 
     function _exitExactBPTInForTokensOut(
-        uint256[] memory balances,
+        uint256[] memory factBalances,
         uint256 totalSupply,
         bytes memory userData
     ) private pure returns (uint256, uint256[] memory) {
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
-        uint256[] memory amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
+        uint256[] memory amountsOut = BasePoolMath.computeProportionalAmountsOut(factBalances, totalSupply, bptAmountIn);
         return (bptAmountIn, amountsOut);
     }
 
     function _exitBPTInForExactTokensOut(
-        uint256[] memory balances,
+        uint256[] memory factBalances,
         uint256[] memory scalingFactors,
         uint256 totalSupply,
         bytes memory userData
     ) private pure returns (uint256, uint256[] memory) {
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
-        InputHelpers.ensureInputLengthMatch(amountsOut.length, balances.length);
+        InputHelpers.ensureInputLengthMatch(amountsOut.length, factBalances.length);
         _upscaleArray(amountsOut, scalingFactors);
 
         // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
         uint256 bptAmountIn = RangeMath._calcBptInGivenExactTokensOut(
-            balances,
+            factBalances,
             amountsOut,
             totalSupply
         );
@@ -451,11 +451,11 @@ abstract contract BaseRangePool is BaseGeneralPool {
     // Recovery Mode
 
     function _doRecoveryModeExit(
-        uint256[] memory balances,
+        uint256[] memory factBalances,
         uint256 totalSupply,
         bytes memory userData
     ) internal pure override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         bptAmountIn = userData.recoveryModeExit();
-        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
+        amountsOut = BasePoolMath.computeProportionalAmountsOut(factBalances, totalSupply, bptAmountIn);
     }
 }

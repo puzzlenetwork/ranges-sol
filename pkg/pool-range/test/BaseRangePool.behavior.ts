@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, fpMul, pct } from '@balancer-labs/v2-helpers/src/numbers';
@@ -13,6 +13,7 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import BaseRangePool from './helpers/BaseRangePool';
 import RangePool from './helpers/RangePool';
+import { deploy } from './helpers/contract';
 
 export function itBehavesAsRangePool(numberOfTokens: number): void {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -25,6 +26,7 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
   let recipient: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
   let vault: Vault;
   let pool: BaseRangePool, allTokens: TokenList, tokens: TokenList;
+  let math: Contract;
 
   const ZEROS = Array(numberOfTokens).fill(bn(0));
   const weights: BigNumberish[] = WEIGHTS.slice(0, numberOfTokens);
@@ -43,6 +45,7 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
 
   before('setup signers', async () => {
     [, lp, recipient, other] = await ethers.getSigners();
+    math = await deploy('ExternalRangeMath');
   });
 
   sharedBeforeEach('deploy tokens and vault', async () => {
@@ -555,13 +558,71 @@ export function itBehavesAsRangePool(numberOfTokens: number): void {
           const maxAmountOut = await pool.getMaxOut(0);
           await pool.swapGivenOut({ in: 1, out: 0, amount: maxAmountOut, from: lp, recipient });
 
-          expect((await pool.getBalances())[0]).to.be.eq(0);
+          const prevBalances = await pool.getBalances();
+          expect(prevBalances[0]).to.be.eq(0);
+          expect(prevBalances[1]).to.be.gt(0);
 
-          const amountsIn = ZEROS.map((n, i) => (i === 1 ? fp(0.1) : fp(0.2)));
+          const prevVirtualBalances = await pool.getVirtualBalances();
+
+          let amountsIn = ZEROS.map((n, i) => (i === 0 ? fp(0) : fp(0.1)));
           const minimumBptOut = bn(1);
+          const ratioMin = await math.calcRatioMin(prevBalances, amountsIn);
+          await pool.joinGivenIn({ amountsIn, minimumBptOut, from: lp });
+
+          const newBalances = await pool.getBalances();
+          expect(newBalances[0]).to.be.eq(0);
+          expect(newBalances[1]).to.be.eq(prevBalances[1].add(fp(0.1)));
+
+          // newVirtualBalances[i] - prevVirtualBalances[i] == prevVirtualBalances[i] * rationMin
+          const newVirtualBalances = await pool.getVirtualBalances();
+          expect(prevVirtualBalances[0].mul(ratioMin).div(fp(1))).to.be.equalWithError(
+            newVirtualBalances[0].sub(prevVirtualBalances[0]),
+            0.000001
+          );
+          expect(prevVirtualBalances[1].mul(ratioMin).div(fp(1))).to.be.equalWithError(
+            newVirtualBalances[1].sub(prevVirtualBalances[1]),
+            0.000001
+          );
+
+          // finally, join all tokens
+          amountsIn = ZEROS.map((n, i) => (i === 1 ? fp(0.1) : fp(0.2)));
           await pool.joinGivenIn({ amountsIn, minimumBptOut, from: lp });
 
           expect((await pool.getBalances())[0]).to.be.gt(0);
+        });
+
+        it('swap all amount of token#0 and exit', async () => {
+          expect((await pool.getBalances())[0]).to.be.gt(0);
+
+          const maxAmountOut = await pool.getMaxOut(0);
+          await pool.swapGivenOut({ in: 1, out: 0, amount: maxAmountOut, from: lp, recipient });
+
+          expect((await pool.getBalances())[0]).to.be.eq(0);
+
+          const amountsIn = ZEROS.map((n, i) => (i === 0 ? fp(0) : fp(0.1)));
+          const minimumBptOut = bn(1);
+          await pool.joinGivenIn({ amountsIn, minimumBptOut, from: lp });
+
+          const prevVirtualBalances = await pool.getVirtualBalances();
+
+          const previousBptBalance = await pool.balanceOf(lp);
+          const totalSupply = await pool.totalSupply();
+          const ratioMin = previousBptBalance.mul(fp(1)).div(totalSupply);
+          await pool.multiExitGivenIn({ from: lp, bptIn: previousBptBalance });
+
+          const newVirtualBalances = await pool.getVirtualBalances();
+
+          // prevVirtualBalances[i] - newVirtualBalances[i] == prevVirtualBalances[i] * rationMin
+          expect(prevVirtualBalances[0].mul(ratioMin).div(fp(1))).to.be.equalWithError(
+            prevVirtualBalances[0].sub(newVirtualBalances[0]),
+            0.000001
+          );
+          expect(prevVirtualBalances[1].mul(ratioMin).div(fp(1))).to.be.equalWithError(
+            prevVirtualBalances[1].sub(newVirtualBalances[1]),
+            0.000001
+          );
+
+          expect(await pool.balanceOf(lp)).to.equal(0);
         });
 
         it('reverts if token in is not in the pool', async () => {

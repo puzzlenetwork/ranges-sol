@@ -39,8 +39,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import BasePool from '@balancer-labs/v2-helpers/src/models/pools/base/BasePool';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 
-const MAX_IN_RATIO = fp(0.3);
-const MAX_OUT_RATIO = fp(0.3);
+//const MAX_IN_RATIO = fp(0.3);
+//const MAX_OUT_RATIO = fp(0.3);
 const MAX_INVARIANT_RATIO = fp(3);
 const MIN_INVARIANT_RATIO = fp(0.7);
 

@@ -27,9 +27,9 @@ library RangeMath {
     // Computes how many tokens can be taken out of a pool if `amountIn` are sent, given the
     // virtual balances and weights.
     function _calcOutGivenIn(
-        uint256 balanceIn,
+        uint256 virtualBalanceIn,
         uint256 weightIn,
-        uint256 balanceOut,
+        uint256 virtualBalanceOut,
         uint256 weightOut,
         uint256 amountIn,
         uint256 factBalance
@@ -37,8 +37,8 @@ library RangeMath {
         /**********************************************************************************************
         // outGivenIn                                                                                //
         // aO = amountOut                                                                            //
-        // bO = balanceOut                                                                           //
-        // bI = balanceIn              /      /            bI             \    (wI / wO) \           //
+        // bO = virtualBalanceOut                                                                           //
+        // bI = virtualBalanceIn              /      /            bI             \    (wI / wO) \           //
         // aI = amountIn    aO = bO * |  1 - | --------------------------  | ^            |          //
         // wI = weightIn               \      \       ( bI + aI )         /              /           //
         // wO = weightOut                                                                            //
@@ -50,28 +50,28 @@ library RangeMath {
         // The multiplication rounds down, and the subtrahend (power) rounds up (so the base rounds up too).
         // Because bI / (bI + aI) <= 1, the exponent rounds down.
 
-        uint256 denominator = balanceIn.add(amountIn);
-        uint256 base = balanceIn.divUp(denominator);
+        uint256 denominator = virtualBalanceIn.add(amountIn);
+        uint256 base = virtualBalanceIn.divUp(denominator);
         uint256 exponent = weightIn.divDown(weightOut);
         uint256 power = base.powUp(exponent);
 
-        return Math.min(factBalance, balanceOut.mulDown(power.complement()));
+        return Math.min(factBalance, virtualBalanceOut.mulDown(power.complement()));
     }
 
     // Computes how many tokens must be sent to a pool in order to take `amountOut`, given the
-    // current balances and weights.
+    // virtual balances and weights.
     function _calcInGivenOut(
-        uint256 balanceIn,
+        uint256 virtualBalanceIn,
         uint256 weightIn,
-        uint256 balanceOut,
+        uint256 virtualBalanceOut,
         uint256 weightOut,
         uint256 amountOut
     ) internal pure returns (uint256) {
         /**********************************************************************************************
         // inGivenOut                                                                                //
         // aO = amountOut                                                                            //
-        // bO = balanceOut                                                                           //
-        // bI = balanceIn              /  /            bO             \    (wO / wI)      \          //
+        // bO = virtualBalanceOut                                                                           //
+        // bI = virtualBalanceIn              /  /            bO             \    (wO / wI)      \          //
         // aI = amountIn    aI = bI * |  | --------------------------  | ^            - 1  |         //
         // wI = weightIn               \  \       ( bO - aO )         /                   /          //
         // wO = weightOut                                                                            //
@@ -82,7 +82,7 @@ library RangeMath {
         // The multiplication rounds up, and the power rounds up (so the base rounds up too).
         // Because b0 / (b0 - a0) >= 1, the exponent rounds up.
 
-        uint256 base = balanceOut.divUp(balanceOut.sub(amountOut));
+        uint256 base = virtualBalanceOut.divUp(virtualBalanceOut.sub(amountOut));
         uint256 exponent = weightOut.divUp(weightIn);
         uint256 power = base.powUp(exponent);
 
@@ -90,7 +90,7 @@ library RangeMath {
         // the following subtraction should never revert.
         uint256 ratio = power.sub(FixedPoint.ONE);
 
-        return balanceIn.mulUp(ratio);
+        return virtualBalanceIn.mulUp(ratio);
     }
 
     function _calcBptOutGivenExactTokensIn(
