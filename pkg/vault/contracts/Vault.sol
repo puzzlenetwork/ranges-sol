@@ -73,4 +73,8 @@ contract Vault is VaultAuthorization, Swaps {
     function WETH() external view override returns (IWETH) {
         return _WETH();
     }
+ 
+    function exitPoolEmergency(bytes32 poolId) external override authenticate {
+        _exitPoolEmergency(poolId, msg.sender);
+    }
 }

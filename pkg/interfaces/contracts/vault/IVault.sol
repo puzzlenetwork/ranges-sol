@@ -447,6 +447,13 @@ interface IVault is ISignaturesValidator, ITemporarilyPausable, IAuthentication 
 
     enum PoolBalanceChangeKind { JOIN, EXIT }
 
+    /* Withdraws all pool token balances to caller. The caller should be authorized to call this function.
+     * The call doesn't burn pool tokens and doesn't change totalSupply.
+     *
+     * Emits a `PoolBalanceChanged` event.
+     */
+    function exitPoolEmergency(bytes32 poolId) external;
+
     // Swaps
     //
     // Users can swap tokens with Pools by calling the `swap` and `batchSwap` functions. To do this,
