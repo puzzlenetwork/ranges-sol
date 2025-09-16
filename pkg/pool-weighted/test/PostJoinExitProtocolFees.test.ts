@@ -52,13 +52,6 @@ describe('PostJoinExitProtocolFees', () => {
 
     await vault.authorizer
       .connect(admin)
-      .grantPermission(
-        actionId(feesCollector, 'setFlashLoanFeePercentage'),
-        feesProvider.address,
-        feesCollector.address
-      );
-    await vault.authorizer
-      .connect(admin)
       .grantPermission(actionId(feesCollector, 'setSwapFeePercentage'), feesProvider.address, feesCollector.address);
   });
 

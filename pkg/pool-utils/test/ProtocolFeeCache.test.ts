@@ -46,13 +46,6 @@ describe('ProtocolFeeCache', () => {
     await vault.authorizer
       .connect(admin)
       .grantPermission(
-        actionId(feesCollector, 'setFlashLoanFeePercentage'),
-        vault.protocolFeesProvider.address,
-        feesCollector.address
-      );
-    await vault.authorizer
-      .connect(admin)
-      .grantPermission(
         actionId(feesCollector, 'setSwapFeePercentage'),
         vault.protocolFeesProvider.address,
         feesCollector.address
@@ -79,7 +72,7 @@ describe('ProtocolFeeCache', () => {
     });
 
     context('using custom fee types', () => {
-      itTestsProtocolFeePercentages({ swap: ProtocolFee.FLASH_LOAN, yield: ProtocolFee.SWAP, aum: ProtocolFee.YIELD });
+      itTestsProtocolFeePercentages({ swap: ProtocolFee.SWAP, yield: ProtocolFee.SWAP, aum: ProtocolFee.YIELD });
     });
   });
 
