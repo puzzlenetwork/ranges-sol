@@ -1,3 +1,4 @@
+import '@balancer-labs/v2-common/setupTests';
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
