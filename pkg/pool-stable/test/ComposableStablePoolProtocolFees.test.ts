@@ -65,13 +65,6 @@ describe('ComposableStablePoolProtocolFees', () => {
     await vault.authorizer
       .connect(admin)
       .grantPermission(actionId(feesCollector, 'setSwapFeePercentage'), feesProvider.address, feesCollector.address);
-    await vault.authorizer
-      .connect(admin)
-      .grantPermission(
-        actionId(feesCollector, 'setFlashLoanFeePercentage'),
-        feesProvider.address,
-        feesCollector.address
-      );
   });
 
   context('for a 2 token pool', () => {

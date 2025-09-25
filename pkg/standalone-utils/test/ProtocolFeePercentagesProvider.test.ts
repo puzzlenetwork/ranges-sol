@@ -17,7 +17,6 @@ describe('ProtocolFeePercentagesProvider', function () {
 
   enum FeeType {
     Swap = 0,
-    FlashLoan = 1,
     Yield = 2,
     AUM = 3,
   }
@@ -26,7 +25,6 @@ describe('ProtocolFeePercentagesProvider', function () {
 
   // Note that these two values are not passed - they're hardcoded into the ProtocolFeesCollector
   const MAX_SWAP_VALUE = fp(0.5);
-  const MAX_FLASH_LOAN_VALUE = fp(0.01);
 
   const MAX_AUM_VALUE = fp(0.2);
   const MAX_YIELD_VALUE = fp(0.8);
@@ -128,8 +126,6 @@ describe('ProtocolFeePercentagesProvider', function () {
 
       context('native fee types', () => {
         itReturnsNameAndMaximum(FeeType.Swap, 'Swap', MAX_SWAP_VALUE);
-
-        itReturnsNameAndMaximum(FeeType.FlashLoan, 'Flash Loan', MAX_FLASH_LOAN_VALUE);
       });
 
       context('custom fee types', () => {
@@ -175,8 +171,6 @@ describe('ProtocolFeePercentagesProvider', function () {
 
       context('native fee types', () => {
         itValidatesFeePercentagesCorrectly(FeeType.Swap, MAX_SWAP_VALUE);
-
-        itValidatesFeePercentagesCorrectly(FeeType.FlashLoan, MAX_FLASH_LOAN_VALUE);
       });
 
       context('custom fee types', () => {
@@ -214,13 +208,6 @@ describe('ProtocolFeePercentagesProvider', function () {
                     .connect(admin)
                     .grantPermission(
                       actionId(feesCollector, 'setSwapFeePercentage'),
-                      provider.address,
-                      feesCollector.address
-                    );
-                  await authorizer
-                    .connect(admin)
-                    .grantPermission(
-                      actionId(feesCollector, 'setFlashLoanFeePercentage'),
                       provider.address,
                       feesCollector.address
                     );
@@ -280,8 +267,6 @@ describe('ProtocolFeePercentagesProvider', function () {
         }
 
         itSetsNativeFeeTypeValueCorrectly(FeeType.Swap, MAX_SWAP_VALUE);
-
-        itSetsNativeFeeTypeValueCorrectly(FeeType.FlashLoan, MAX_FLASH_LOAN_VALUE);
       });
 
       context('custom fee types', () => {
@@ -354,22 +339,12 @@ describe('ProtocolFeePercentagesProvider', function () {
         await authorizer
           .connect(admin)
           .grantPermission(actionId(feesCollector, 'setSwapFeePercentage'), other.address, feesCollector.address);
-        await authorizer
-          .connect(admin)
-          .grantPermission(actionId(feesCollector, 'setFlashLoanFeePercentage'), other.address, feesCollector.address);
       });
 
       describe('swap fee', () => {
         it('the provider tracks value changes', async () => {
           await feesCollector.connect(other).setSwapFeePercentage(fp(0.13));
           expect(await provider.getFeeTypePercentage(FeeType.Swap)).to.equal(fp(0.13));
-        });
-      });
-
-      describe('flash loan fee', () => {
-        it('the provider tracks value changes', async () => {
-          await feesCollector.connect(other).setFlashLoanFeePercentage(fp(0.0013));
-          expect(await provider.getFeeTypePercentage(FeeType.FlashLoan)).to.equal(fp(0.0013));
         });
       });
     });
@@ -383,14 +358,6 @@ describe('ProtocolFeePercentagesProvider', function () {
           await authorizer
             .connect(admin)
             .grantPermission(actionId(provider, 'registerFeeType'), authorized.address, provider.address);
-        });
-
-        context('when the fee type is already in use', () => {
-          it('reverts', async () => {
-            await expect(provider.connect(authorized).registerFeeType(FeeType.FlashLoan, '', 0, 0)).to.be.revertedWith(
-              'Fee type already registered'
-            );
-          });
         });
 
         context('when the maximum value is 0%', () => {

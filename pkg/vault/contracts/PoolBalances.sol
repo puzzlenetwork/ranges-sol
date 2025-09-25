@@ -20,6 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC2
 import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
@@ -150,6 +151,34 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
             // We can unsafely cast to int256 because balances are actually stored as uint112
             _unsafeCastToInt256(amountsInOrOut, positive),
             paidProtocolSwapFeeAmounts
+        );
+    }
+
+    function _exitPoolEmergency(bytes32 poolId, address payable recipient) internal {
+        (IERC20[] memory tokens, bytes32[] memory rawBalances) = _getPoolTokens(poolId);
+        (uint256[] memory balances, ) = rawBalances.totalsAndLastChangeBlock();
+        PoolBalanceChange memory change = PoolBalanceChange(_asIAsset(tokens),
+            new uint256[](tokens.length), new bytes(0), false);
+        bytes32[] memory finalBalances = _processExitPoolTransfers(
+            recipient, change, rawBalances, balances, new uint256[](tokens.length));
+        
+        // All that remains is storing the new Pool balances.
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
+            _setTwoTokenPoolCashBalances(poolId, tokens[0], finalBalances[0], tokens[1], finalBalances[1]);
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            _setMinimalSwapInfoPoolBalances(poolId, tokens, finalBalances);
+        } else {
+            // PoolSpecialization.GENERAL
+            _setGeneralPoolBalances(poolId, finalBalances);
+        }
+
+        emit PoolBalanceChanged(
+            poolId,
+            recipient,
+            tokens,
+            _unsafeCastToInt256(balances, false),
+            new uint256[](tokens.length)
         );
     }
 

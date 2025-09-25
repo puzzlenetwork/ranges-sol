@@ -8,7 +8,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { advanceTime, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { JoinPoolRequest, ExitPoolRequest, PoolSpecialization, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { JoinPoolRequest, ExitPoolRequest, PoolSpecialization, RangePoolEncoder } from '@balancer-labs/balancer-js';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { ANY_ADDRESS, DELEGATE_OWNER, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
@@ -306,12 +306,13 @@ describe('BasePool', function () {
 
         sharedBeforeEach('deploy and initialize pool', async () => {
           initialBalances = Array(tokens.length).fill(fp(1000));
+          initialVirtualBalances = Array(tokens.length).fill(fp(2000));
           poolId = await pool.getPoolId();
 
           const request: JoinPoolRequest = {
             assets: tokens.addresses,
             maxAmountsIn: initialBalances,
-            userData: WeightedPoolEncoder.joinInit(initialBalances),
+            userData: RangePoolEncoder.joinInit(initialBalances, initialVirtualBalances),
             fromInternalBalance: false,
           };
 

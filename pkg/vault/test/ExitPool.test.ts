@@ -170,6 +170,10 @@ describe('Exit Pool', () => {
       }
 
       context('when called incorrectly', () => {
+        it('reverts if emergency exit with not authorized admin', async () => {
+          await expect(vault.connect(creator).exitPoolEmergency(poolId)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        });
+
         it('reverts if the pool ID does not exist', async () => {
           await expect(exitPool({ poolId: ethers.utils.id('invalid') })).to.be.revertedWith('INVALID_POOL_ID');
         });
@@ -236,6 +240,35 @@ describe('Exit Pool', () => {
             await expect(
               exitPool({ exitAmounts: array(0).concat(bn(0)), dueProtocolFeeAmounts: array(0).concat(bn(0)) })
             ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          });
+        });
+
+        context('with authorized admin', () => {
+          it('exit pool emergency', async () => {
+            const action = await actionId(vault, 'exitPoolEmergency');
+            await authorizer.connect(admin).grantPermission(action, recipient.address, vault.address);
+
+            {
+              const { tokens, balances } = await vault.getPoolTokens(poolId);
+              balances.forEach((balance: number, i: number) => {
+                expect(balance).to.be.gt(0);
+              });
+              tokens.forEach(async (token: Token, i: number) => {
+                await expect(token.balanceOf(recipient.address)).to.be.eq(0);
+              });
+            }
+
+            await vault.connect(recipient).exitPoolEmergency(poolId);
+
+            {
+              const { tokens, balances } = await vault.getPoolTokens(poolId);
+              balances.forEach((balance: number, i: number) => {
+                expect(balance).to.be.eq(0);
+              });
+              tokens.forEach(async (token: Token, i: number) => {
+                await expect(token.balanceOf(recipient.address)).to.be.gt(0);
+              });
+            }
           });
         });
 

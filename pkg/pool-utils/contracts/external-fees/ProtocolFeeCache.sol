@@ -67,7 +67,7 @@ abstract contract ProtocolFeeCache is IProtocolFeeCache, RecoveryMode {
      * This is because some Pools may have different protocol fee values for the same type of underlying operation:
      * for example, Stable Pools might have a different swap protocol fee than Weighted Pools.
      * This module does not check at all that the chosen fee types have any sort of relation with the operation they're
-     * assigned to: it is possible to e.g. set a Pool's swap protocol fee to equal the flash loan protocol fee.
+     * assigned to: it is possible to e.g. set a Pool's swap protocol fee.
      */
     struct ProviderFeeIDs {
         uint256 swap;
