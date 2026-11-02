@@ -3,7 +3,7 @@
 > [!CAUTION]
 > **THIS IS AN OLD, UNMAINTAINED VERSION OF RANGES (BALANCER V2-BASED). IT CONTAINS A KNOWN CRITICAL VULNERABILITIES AND MUST NOT BE DEPLOYED OR USED.**
 >
-> It was never deployed only on testnets.
+> It was deployed only on testnets.
 > Security reports against this repository do not apply to the live deployment.
 
 ---
