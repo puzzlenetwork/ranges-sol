@@ -1,3 +1,12 @@
+# ⚠️ DEPRECATED — DO NOT USE OR DEPLOY ⚠️
+
+> [!CAUTION]
+> **THIS IS AN OLD, UNMAINTAINED VERSION OF RANGES (BALANCER V2-BASED). IT CONTAINS A KNOWN CRITICAL VULNERABILITIES AND MUST NOT BE DEPLOYED OR USED.**
+>
+> It was never deployed only on testnets.
+> Security reports against this repository do not apply to the live deployment.
+
+---
 # <img src="logo.svg" alt="Balancer" height="128px">
 
 # Balancer V2 Monorepo
